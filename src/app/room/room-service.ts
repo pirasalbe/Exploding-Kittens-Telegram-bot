@@ -1,10 +1,15 @@
+import { UserService } from '../user/user-service';
 import { Room } from './room';
-import { UserService } from './user-service';
 
 /**
  * Handle room logic
  */
 export class RoomService {
+  /**
+   * Singleton
+   */
+  private static instance: RoomService = null;
+
   /**
    * User service
    */
@@ -14,6 +19,19 @@ export class RoomService {
    * Online rooms
    */
   private rooms: Record<number, Room> = {};
+
+  private constructor() {}
+
+  /**
+   * Get the instance
+   */
+  static getInstance(): RoomService {
+    if (RoomService.instance == null) {
+      RoomService.instance = new RoomService();
+    }
+
+    return RoomService.instance;
+  }
 
   /**
    * Host a new game

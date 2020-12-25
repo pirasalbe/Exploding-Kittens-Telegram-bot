@@ -1,7 +1,8 @@
 import { Markup, Telegraf } from 'telegraf';
 
 import { GameFactory } from './factories/game-factory';
-import { UserService } from './services/user-service';
+import { RoomService } from './room/room-service';
+import { UserService } from './user/user-service';
 
 /**
  * Bot manager
@@ -16,6 +17,11 @@ export class Bot {
    * User service
    */
   private userService: UserService = UserService.getInstance();
+
+  /**
+   * Room service
+   */
+  private roomService: RoomService = RoomService.getInstance();
 
   /**
    * Bot instace
@@ -74,7 +80,7 @@ export class Bot {
     // stop command
     this.bot.command('stop', (ctx) => {
       ctx.reply('Ended current game');
-      // RoomService.disconnect(ctx.id);
+      this.roomService.exitGame(ctx.from.id);
     });
 
     this.host();
@@ -99,7 +105,7 @@ export class Bot {
     this.bot.action(GameFactory.getModesActions(), (ctx) => {
       ctx.editMessageText('Mode selected');
       // create room
-      // RoomService.hostGame(ctx.from.id, ctx.from.username);
+      this.roomService.hostGame(ctx.from.id);
       // TODO reply with id and game info
     });
   }
@@ -122,7 +128,7 @@ export class Bot {
     this.bot.on('text', (ctx) => {
       // join request
       if (ctx.message.reply_to_message.text === 'Insert room code') {
-        // RoomService.joinGame(ctx.from.id, ctx.from.username, ctx.message.text);
+        this.roomService.joinGame(ctx.from.id, Number(ctx.message.text));
         // TODO send game info
       } else {
         // unknown requests
