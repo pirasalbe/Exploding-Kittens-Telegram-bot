@@ -1,7 +1,12 @@
-import { Telegram } from 'telegraf';
+import { Markup, Telegram } from 'telegraf';
+import { InlineKeyboardButton } from 'telegraf/typings/markup';
 
+import { GameFactory } from '../game/game-factory';
 import { UserService } from '../user/user-service';
-import { GameFactory } from './../factories/game-factory';
+import { BotAction } from './../bot-action.enum';
+import { DefuseCard } from './../game/card';
+import { GameUtils } from './../game/game-utils';
+import { Player } from './player';
 import { Room } from './room';
 
 /**
@@ -87,7 +92,7 @@ export class RoomService {
     const room: Room = this.getRoom(code);
     if (room && !room.running && room.players.length < room.mode.maxPlayers) {
       // add user
-      room.players.push(id);
+      room.players.push(new Player(id));
       this.userService.setRoom(id, code);
 
       // notify players
@@ -117,11 +122,59 @@ export class RoomService {
 
     if (room.players.length > 1) {
       room.running = true;
+
+      // prepare deck
+      room.deck = GameUtils.shuffle(room.mode.getCards(room.players.length));
+
+      // give cards to each player
+      for (const player of room.players) {
+        player.cards.push(new DefuseCard());
+        for (let i = 0; i < 4; i++) {
+          player.cards.push(room.deck.pop());
+        }
+      }
+
+      // add exploding and defuse
+      room.deck = GameUtils.shuffle(
+        room.deck.concat(room.mode.getMissingCards(room.players.length))
+      );
+
+      // start turn
+      this.sendCards(code);
     }
 
-    // TODO logic
-
     return room.running;
+  }
+
+  /**
+   * Send cards to a player
+   * @param code Room code
+   */
+  sendCards(code: number): void {
+    // get room
+    const room: Room = this.getRoom(code);
+
+    // get active player
+    const player: Player = room.players[room.playerTurn];
+
+    this.notifyRoom(
+      code,
+      'It is ' + this.userService.getUsername(player.id) + ' turn'
+    );
+
+    // send cards info
+    const buttons: InlineKeyboardButton[][] = [
+      [Markup.callbackButton('Draw', BotAction.DRAW)],
+    ];
+    for (const card of player.cards) {
+      buttons.push([Markup.callbackButton(card.description, card.type)]);
+    }
+
+    this.telegram.sendMessage(
+      player.id,
+      'Choose a card',
+      Markup.inlineKeyboard(buttons).extra()
+    );
   }
 
   /**
@@ -151,7 +204,7 @@ export class RoomService {
 
     // remove all players
     for (const player of room.players) {
-      this.userService.setRoom(player);
+      this.userService.setRoom(player.id);
     }
 
     // destroy room
@@ -170,7 +223,7 @@ export class RoomService {
     // remove user from room
     const room = this.getRoom(code);
     if (room) {
-      const playerIndex = room.players.findIndex((p: number) => p === id);
+      const playerIndex = room.players.findIndex((p: Player) => p.id === id);
       room.players.splice(playerIndex, 1);
 
       // notify players
@@ -202,7 +255,7 @@ export class RoomService {
   private notifyRoom(code: number, message: string): void {
     const room: Room = this.getRoom(code);
     for (const player of room.players) {
-      this.telegram.sendMessage(player, message);
+      this.telegram.sendMessage(player.id, message);
     }
   }
 }

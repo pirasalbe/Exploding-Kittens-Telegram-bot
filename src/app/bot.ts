@@ -2,7 +2,7 @@ import { Markup, Telegraf } from 'telegraf';
 import { TelegrafContext } from 'telegraf/typings/context';
 
 import { BotAction } from './bot-action.enum';
-import { GameFactory } from './factories/game-factory';
+import { GameFactory } from './game/game-factory';
 import { Room } from './room/room';
 import { RoomService } from './room/room-service';
 import { UserService } from './user/user-service';
@@ -70,7 +70,7 @@ export class Bot {
       this.registerUser(ctx);
 
       if (this.userService.getRoom(ctx.from.id)) {
-        ctx.reply('You are already playing. Use /stop to disconnect.');
+        ctx.reply('You are already playing. Send /stop to disconnect.');
       } else {
         // start game request
         ctx.reply(
@@ -207,7 +207,7 @@ export class Bot {
           ctx.reply(
             'Joined room: ' +
               room.mode.description +
-              '. Use /stop to disconnect.'
+              '. Send /stop to disconnect.'
           );
         } else {
           // tslint:disable-next-line:quotemark
