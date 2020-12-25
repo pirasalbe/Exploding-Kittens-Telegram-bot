@@ -2,6 +2,7 @@ import { Markup, Telegraf } from 'telegraf';
 import { TelegrafContext } from 'telegraf/typings/context';
 
 import { BotAction } from './bot-action.enum';
+import { CardType, DefuseCard, ExplodingKittenCard } from './game/card';
 import { GameFactory } from './game/game-factory';
 import { Room } from './room/room';
 import { RoomService } from './room/room-service';
@@ -92,6 +93,7 @@ export class Bot {
 
     this.host();
     this.join();
+    this.player();
     this.textListener();
   }
 
@@ -179,7 +181,7 @@ export class Bot {
   }
 
   /**
-   * Send a requesto for the room code
+   * Send a request for the room code
    * @param ctx Telegram context
    */
   private askRoomCode(ctx: TelegrafContext): void {
@@ -222,6 +224,53 @@ export class Bot {
             '". Send /start to begin, send /stop to exit current game'
         );
       }
+    });
+  }
+
+  /**
+   * Player commands
+   */
+  player(): void {
+    /**
+     * Draw
+     */
+    this.bot.action(BotAction.DRAW, (ctx) => {
+      this.registerUser(ctx);
+      ctx.editMessageText('You draw a card');
+
+      this.roomService.drawCard(ctx.from.id);
+    });
+
+    /**
+     * Cards
+     */
+    this.bot.action(Object.values(CardType), (ctx) => {
+      this.registerUser(ctx);
+      ctx.editMessageText('You played: ' + ctx.callbackQuery.data);
+
+      this.roomService.playCard(ctx.from.id, ctx.callbackQuery.data);
+    });
+
+    /**
+     * Defuse exploding
+     */
+    this.bot.action(BotAction.DEFUSE_KITTEN, (ctx) => {
+      this.registerUser(ctx);
+      ctx.editMessageText('You played: ' + new DefuseCard().description);
+
+      this.roomService.playCard(ctx.from.id, CardType.DEFUSE);
+    });
+
+    /**
+     * Explode
+     */
+    this.bot.action(BotAction.EXPLODE, (ctx) => {
+      this.registerUser(ctx);
+      ctx.editMessageText(
+        'You played: ' + new ExplodingKittenCard().description
+      );
+
+      this.roomService.playCard(ctx.from.id, CardType.EXPLODING_KITTEN);
     });
   }
 }

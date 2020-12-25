@@ -29,7 +29,12 @@ export class Room {
   /**
    * Index of the player that should play
    */
-  playerTurn: number;
+  currentPlayer: number;
+
+  /**
+   * Number of turns to play
+   */
+  turns: number;
 
   /**
    * Game is running
@@ -39,7 +44,8 @@ export class Room {
   constructor(id: number, mode: Mode) {
     this.id = id;
     this.players = [];
-    this.playerTurn = 0;
+    this.currentPlayer = 0;
+    this.turns = 1;
     this.running = false;
     this.mode = mode;
   }

@@ -35,6 +35,7 @@ export class DefuseCard implements Card {
 export class AttackCard implements Card {
   type: CardType = CardType.ATTACK;
   description = 'Attack';
+  turns = 2;
 }
 
 export class SkipCard implements Card {
@@ -45,11 +46,13 @@ export class SkipCard implements Card {
 export class SeeFutureCard implements Card {
   type: CardType = CardType.SEE_FUTURE;
   description = 'See the future';
+  count = 3;
 }
 
 export class AlterFutureCard implements Card {
   type: CardType = CardType.ALTER_FUTURE;
   description = 'Alter the future';
+  count = 3;
 }
 
 export class ShuffleCard implements Card {

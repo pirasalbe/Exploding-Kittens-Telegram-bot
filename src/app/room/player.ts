@@ -14,8 +14,14 @@ export class Player {
    */
   cards: Card[];
 
+  /**
+   * Player is alive and can play
+   */
+  alive: boolean;
+
   constructor(id: number) {
     this.id = id;
     this.cards = [];
+    this.alive = true;
   }
 }

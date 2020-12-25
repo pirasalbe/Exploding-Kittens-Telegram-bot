@@ -35,7 +35,7 @@ export class UserService {
   registerUser(id: number, username: string): void {
     if (!this.users[id]) {
       this.users[id] = new User(id, username);
-    } else {
+    } else if (this.users[id].username !== username) {
       this.users[id].username = username;
     }
   }
