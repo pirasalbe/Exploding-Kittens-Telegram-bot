@@ -41,6 +41,14 @@ export class GameFactory {
   };
 
   /**
+   * Gets a mode
+   * @param id Mode id
+   */
+  static getMode(id: string): Mode {
+    return this.modes[id];
+  }
+
+  /**
    * Gets all available modes as buttons
    */
   static getModesButtons(): InlineKeyboardButton[] {

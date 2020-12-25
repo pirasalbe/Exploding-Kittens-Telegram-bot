@@ -1,6 +1,9 @@
 import { Markup, Telegraf } from 'telegraf';
+import { TelegrafContext } from 'telegraf/typings/context';
 
+import { BotAction } from './bot-action.enum';
 import { GameFactory } from './factories/game-factory';
+import { Room } from './room/room';
 import { RoomService } from './room/room-service';
 import { UserService } from './user/user-service';
 
@@ -64,23 +67,27 @@ export class Bot {
   private registerMiddlewares(): void {
     // start command
     this.bot.start((ctx) => {
-      // register user
-      this.userService.registerUser(ctx.from.id, ctx.from.username);
+      this.registerUser(ctx);
 
-      // start game request
-      ctx.reply(
-        'What do you want to do?',
-        Markup.inlineKeyboard([
-          Markup.callbackButton('Host game', 'host'),
-          Markup.callbackButton('Join game', 'join'),
-        ]).extra()
-      );
+      if (this.userService.getRoom(ctx.from.id)) {
+        ctx.reply('You are already playing. Use /stop to disconnect.');
+      } else {
+        // start game request
+        ctx.reply(
+          'What do you want to do?',
+          Markup.inlineKeyboard([
+            Markup.callbackButton('Host game', 'host'),
+            Markup.callbackButton('Join game', 'join'),
+          ]).extra()
+        );
+      }
     });
 
     // stop command
     this.bot.command('stop', (ctx) => {
-      ctx.reply('Ended current game');
+      this.registerUser(ctx);
       this.roomService.exitGame(ctx.from.id);
+      ctx.reply('Disconnected');
     });
 
     this.host();
@@ -89,11 +96,20 @@ export class Bot {
   }
 
   /**
+   * Create user if not exists
+   * @param ctx Telegram context
+   */
+  registerUser(ctx: TelegrafContext): void {
+    this.userService.registerUser(ctx.from.id, ctx.from.username);
+  }
+
+  /**
    * Host related commands
    */
   private host(): void {
     // host a game, ask for a mode
     this.bot.action('host', (ctx) => {
+      this.registerUser(ctx);
       ctx.editMessageText('Hosting a new game');
       ctx.reply(
         'Choose mode',
@@ -101,12 +117,52 @@ export class Bot {
       );
     });
 
-    // mode selected, create room
+    /**
+     * mode selected, create room
+     */
     this.bot.action(GameFactory.getModesActions(), (ctx) => {
-      ctx.editMessageText('Mode selected');
+      this.registerUser(ctx);
+
       // create room
-      this.roomService.hostGame(ctx.from.id);
-      // TODO reply with id and game info
+      const room: Room = this.roomService.hostGame(
+        ctx.from.id,
+        ctx.callbackQuery.data
+      );
+
+      ctx.editMessageText('Room created: ' + room.mode.description);
+      ctx.reply(
+        'Room code: ' + room.id,
+        Markup.inlineKeyboard([
+          Markup.callbackButton('Cancel', BotAction.CANCEL_GAME),
+          Markup.callbackButton('Start', BotAction.START_GAME),
+        ]).extra()
+      );
+    });
+
+    /**
+     * Cancel Game
+     */
+    this.bot.action(BotAction.CANCEL_GAME, (ctx) => {
+      this.registerUser(ctx);
+
+      this.roomService.stopGame(ctx.from.id);
+
+      ctx.editMessageText('Game ended');
+    });
+
+    /**
+     * Start Game
+     */
+    this.bot.action(BotAction.START_GAME, (ctx) => {
+      this.registerUser(ctx);
+
+      const started = this.roomService.startGame(ctx.from.id);
+
+      if (started) {
+        ctx.editMessageText('Game started');
+      } else {
+        ctx.reply('Not enough players to start game');
+      }
     });
   }
 
@@ -116,9 +172,18 @@ export class Bot {
   private join(): void {
     // join game
     this.bot.action('join', (ctx) => {
+      this.registerUser(ctx);
       ctx.editMessageText('Joining an existing game');
-      ctx.reply('Insert room code', Markup.forceReply().extra());
+      this.askRoomCode(ctx);
     });
+  }
+
+  /**
+   * Send a requesto for the room code
+   * @param ctx Telegram context
+   */
+  private askRoomCode(ctx: TelegrafContext): void {
+    ctx.reply('Insert room code', Markup.forceReply().extra());
   }
 
   /**
@@ -126,10 +191,29 @@ export class Bot {
    */
   private textListener(): void {
     this.bot.on('text', (ctx) => {
+      this.registerUser(ctx);
       // join request
-      if (ctx.message.reply_to_message.text === 'Insert room code') {
-        this.roomService.joinGame(ctx.from.id, Number(ctx.message.text));
-        // TODO send game info
+      if (
+        ctx.message.reply_to_message &&
+        ctx.message.reply_to_message.text === 'Insert room code'
+      ) {
+        const room: Room = this.roomService.joinGame(
+          ctx.from.id,
+          Number(ctx.message.text)
+        );
+
+        // send room info
+        if (room) {
+          ctx.reply(
+            'Joined room: ' +
+              room.mode.description +
+              '. Use /stop to disconnect.'
+          );
+        } else {
+          // tslint:disable-next-line:quotemark
+          ctx.reply("Room doesn't exists");
+          this.askRoomCode(ctx);
+        }
       } else {
         // unknown requests
         ctx.reply(

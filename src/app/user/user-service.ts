@@ -49,6 +49,14 @@ export class UserService {
   }
 
   /**
+   * Get a user username
+   * @param id User id
+   */
+  getUsername(id: number): string {
+    return this.getUser(id).username;
+  }
+
+  /**
    * Get a user room
    * @param  id User id
    */
