@@ -17,7 +17,7 @@ export enum CardType {
   SEE_FUTURE = 'see_future',
   ALTER_FUTURE = 'alter_future',
   SHUFFLE = 'shuffle',
-  DRAW_BOTTOM = 'draw_botton',
+  DRAW_BOTTOM = 'draw_bottom',
   FAVOR = 'favor',
   CAT = 'steal',
 }

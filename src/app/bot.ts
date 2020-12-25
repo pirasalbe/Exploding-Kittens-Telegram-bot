@@ -246,7 +246,7 @@ export class Bot {
      */
     this.bot.action(Object.values(CardType), (ctx) => {
       this.registerUser(ctx);
-      ctx.editMessageText('You played: ' + ctx.callbackQuery.data);
+      ctx.editMessageText('You played: ' + CardType[ctx.callbackQuery.data]);
 
       this.roomService.playCard(ctx.from.id, ctx.callbackQuery.data);
     });
