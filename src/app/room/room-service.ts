@@ -277,7 +277,7 @@ export class RoomService {
 
         const attackCard: AttackCard = card as AttackCard;
 
-        this.nextPlayer(code, attackCard.turns + room.turns);
+        this.nextPlayer(code, attackCard.turns);
         break;
       case CardType.SKIP:
         this.notifyRoom(code, 'played a ' + card.description, id);
@@ -382,7 +382,7 @@ export class RoomService {
       }
 
       // se sono stati impostati dei turni
-      room.turns = turns;
+      room.turns += turns;
     }
 
     // send cards button
