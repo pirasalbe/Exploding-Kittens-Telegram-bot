@@ -96,15 +96,14 @@ export class RoomService {
       this.userService.setRoom(id, code);
 
       // notify players
-      const username = this.userService.getUsername(id);
       this.notifyRoom(
         code,
-        username +
-          ' joined the room. [' +
+        'joined the room. [' +
           room.players.length +
           '/' +
           room.mode.maxPlayers +
-          '] players.'
+          '] players.',
+        id
       );
     }
 
@@ -122,6 +121,15 @@ export class RoomService {
 
     if (room.players.length > 1) {
       room.running = true;
+
+      this.notifyRoom(
+        code,
+        'Game started. [' +
+          room.players.length +
+          '/' +
+          room.mode.maxPlayers +
+          '] players.'
+      );
 
       // prepare deck
       room.deck = GameUtils.shuffle(room.mode.getCards(room.players.length));
@@ -191,15 +199,7 @@ export class RoomService {
 
     // exploding kittens
     if (card instanceof ExplodingKittenCard) {
-      this.notifyRoom(
-        code,
-        this.userService.getUsername(id) +
-          ' drew an ' +
-          card.description +
-          '. ' +
-          room.deck.length +
-          ' cards left in the deck'
-      );
+      this.notifyRoom(code, 'drew an ' + card.description, id);
       // if has defuse ask to play it
       if (player.cards.find((c: Card) => c instanceof DefuseCard)) {
         this.telegram.sendMessage(
@@ -222,10 +222,8 @@ export class RoomService {
       // number of cards
       this.notifyRoom(
         code,
-        this.userService.getUsername(id) +
-          ' drew a card. ' +
-          room.deck.length +
-          ' cards left in the deck'
+        'drew a card. ' + room.deck.length + ' cards left in the deck',
+        id
       );
 
       this.nextPlayer(code);
@@ -252,10 +250,7 @@ export class RoomService {
     switch (cardType) {
       case CardType.EXPLODING_KITTEN:
         // explode
-        this.notifyRoom(
-          code,
-          this.userService.getUsername(id) + ' has exploded'
-        );
+        this.notifyRoom(code, 'has exploded', id);
         player.alive = false;
         player.cards = [];
         this.nextPlayer(code);
@@ -267,10 +262,7 @@ export class RoomService {
         // only if player has an exploding
         if (explodingIndex > -1) {
           player.cards.splice(explodingIndex, 1);
-          this.notifyRoom(
-            code,
-            this.userService.getUsername(id) + ' played a ' + card.description
-          );
+          this.notifyRoom(code, 'played a ' + card.description, id);
           this.nextPlayer(code);
         } else {
           // else send cards buttons
@@ -281,27 +273,18 @@ export class RoomService {
         }
         break;
       case CardType.ATTACK:
-        this.notifyRoom(
-          code,
-          this.userService.getUsername(id) + ' played an ' + card.description
-        );
+        this.notifyRoom(code, 'played an ' + card.description, id);
 
         const attackCard: AttackCard = card as AttackCard;
 
         this.nextPlayer(code, attackCard.turns + room.turns);
         break;
       case CardType.SKIP:
-        this.notifyRoom(
-          code,
-          this.userService.getUsername(id) + ' played a ' + card.description
-        );
+        this.notifyRoom(code, 'played a ' + card.description, id);
         this.nextPlayer(code);
         break;
       case CardType.SEE_FUTURE:
-        this.notifyRoom(
-          code,
-          this.userService.getUsername(id) + ' played a ' + card.description
-        );
+        this.notifyRoom(code, 'played a ' + card.description, id);
 
         const seeFutureCard: SeeFutureCard = card as SeeFutureCard;
 
@@ -321,20 +304,14 @@ export class RoomService {
         // TODO
         break;
       case CardType.SHUFFLE:
-        this.notifyRoom(
-          code,
-          this.userService.getUsername(id) + ' played a ' + card.description
-        );
+        this.notifyRoom(code, 'played a ' + card.description, id);
         // shuffle deck
         room.deck = GameUtils.shuffle(room.deck);
 
         this.sendCardsButtons(code);
         break;
       case CardType.DRAW_BOTTOM:
-        this.notifyRoom(
-          code,
-          this.userService.getUsername(id) + ' played a ' + card.description
-        );
+        this.notifyRoom(code, 'played a ' + card.description, id);
         this.drawCard(id, false);
         break;
       case CardType.FAVOR:
@@ -361,7 +338,8 @@ export class RoomService {
 
     this.notifyRoom(
       code,
-      'It is ' + this.userService.getUsername(player.id) + ' turn'
+      'turn. ' + room.turns + ' turn' + (room.turns > 1 ? 's' : '') + ' left.',
+      player.id
     );
 
     // send cards info
@@ -461,16 +439,26 @@ export class RoomService {
       room.players.splice(playerIndex, 1);
 
       // notify players
-      const username = this.userService.getUsername(id);
-      this.notifyRoom(
-        code,
-        username +
-          ' disconnected. [' +
-          room.players.length +
-          '/' +
-          room.mode.maxPlayers +
-          '] players.'
-      );
+      let message =
+        'disconnected. [' +
+        room.players.length +
+        '/' +
+        room.mode.maxPlayers +
+        '] players.';
+
+      // remove exploding kitten
+      if (room.deck.length > 0) {
+        const explodingIndex: number = room.deck.findIndex(
+          (c: Card) => c instanceof ExplodingKittenCard
+        );
+        // only if player has an exploding
+        if (explodingIndex > -1) {
+          const card: Card = room.deck.splice(explodingIndex, 1)[0];
+          message += ' Removed an ' + card.description;
+        }
+      }
+
+      this.notifyRoom(code, message, id);
 
       // if there are no more players
       if (room.players.length === 0) {
@@ -478,6 +466,7 @@ export class RoomService {
       }
 
       // TODO handle game logic
+      // TODO one player left
     }
   }
 
@@ -485,9 +474,16 @@ export class RoomService {
    * Send a message to all users
    * @param code Room code
    * @param message Message to send
+   * @param userId Username to add at the beginnig of the message
    */
-  private notifyRoom(code: number, message: string): void {
+  private notifyRoom(code: number, message: string, userId: number = -1): void {
     const room: Room = this.getRoom(code);
+
+    // add username
+    if (userId !== -1) {
+      message = this.userService.getUsername(userId) + ' ' + message;
+    }
+
     for (const player of room.players) {
       this.telegram.sendMessage(player.id, message);
     }
