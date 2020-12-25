@@ -190,6 +190,12 @@ export class RoomService {
     const code: number = this.userService.getRoom(id);
     const room: Room = this.getRoom(code);
 
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
     // get current player
     const player: Player = room.players[room.currentPlayer];
     const card: Card = top ? room.deck.pop() : room.deck.splice(0, 1)[0];
@@ -231,6 +237,14 @@ export class RoomService {
   }
 
   /**
+   * Ask the user to start again
+   * @param id User id
+   */
+  private sendStartSuggestion(id: number): void {
+    this.telegram.sendMessage(id, 'Send /start to begin.');
+  }
+
+  /**
    * Play user card
    * @param id User id
    * @param cardType Card to play
@@ -240,10 +254,24 @@ export class RoomService {
     const code: number = this.userService.getRoom(id);
     const room: Room = this.getRoom(code);
 
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
     const player: Player = room.players[room.currentPlayer];
 
     // get played card
     const cardIndex = player.cards.findIndex((c: Card) => c.type === cardType);
+
+    // player doesn't have the card
+    if (cardIndex === -1) {
+      this.telegram.sendMessage(id, 'Card not found');
+      this.sendCardsButtons(code);
+      return;
+    }
+
     const card: Card = player.cards.splice(cardIndex, 1)[0];
 
     // card logic
@@ -253,7 +281,9 @@ export class RoomService {
         this.notifyRoom(code, 'has exploded', id);
         player.alive = false;
         player.cards = [];
-        this.nextPlayer(code);
+        if (!this.checkEndGame(code)) {
+          this.nextPlayer(code);
+        }
         break;
       case CardType.DEFUSE:
         const explodingIndex: number = player.cards.findIndex(
@@ -323,6 +353,16 @@ export class RoomService {
       default:
         break;
     }
+  }
+
+  /**
+   * Check if game has ended and a player has won
+   * @param code Room code
+   */
+  private checkEndGame(code: number): boolean {
+    // TODO count player alive
+    // TODO ask to start again
+    return false;
   }
 
   /**
@@ -438,7 +478,6 @@ export class RoomService {
       const playerIndex = room.players.findIndex((p: Player) => p.id === id);
       room.players.splice(playerIndex, 1);
 
-      // notify players
       let message =
         'disconnected. [' +
         room.players.length +
@@ -458,6 +497,7 @@ export class RoomService {
         }
       }
 
+      // notify players
       this.notifyRoom(code, message, id);
 
       // if there are no more players
@@ -465,8 +505,14 @@ export class RoomService {
         this.destroyRoom(code);
       }
 
-      // TODO handle game logic
-      // TODO one player left
+      // check if last player alive
+      this.checkEndGame(code);
+
+      // next player if he was the current player
+      if (room.currentPlayer === playerIndex) {
+        room.currentPlayer -= 1;
+        this.nextPlayer(code);
+      }
     }
   }
 
