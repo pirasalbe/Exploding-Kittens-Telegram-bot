@@ -84,6 +84,18 @@ export class Bot {
       }
     });
 
+    // help command
+    this.bot.help((ctx) => {
+      this.registerUser(ctx);
+
+      ctx.reply(
+        '/start Start a new game\n/stop End current game',
+        Markup.inlineKeyboard([
+          Markup.urlButton('Rules', 'http://bit.ly/37OKl0x'),
+        ]).extra()
+      );
+    });
+
     // stop command
     this.bot.command('stop', (ctx) => {
       this.registerUser(ctx);
@@ -221,7 +233,7 @@ export class Bot {
         ctx.reply(
           'Unknown command "' +
             ctx.message.text +
-            '". Send /start to begin, send /stop to exit current game'
+            '". Send /help for more info.'
         );
       }
     });
