@@ -351,6 +351,7 @@ export class RoomService {
         // TODO
         break;
       default:
+        console.log('Card not recognized', cardType);
         break;
     }
   }
@@ -360,9 +361,26 @@ export class RoomService {
    * @param code Room code
    */
   private checkEndGame(code: number): boolean {
-    // TODO count player alive
+    // get room
+    const room: Room = this.getRoom(code);
+
+    let end = false;
+    let alive = 0;
+
+    // count player alive
+    for (let i = 0; i < room.players.length && !end; i++) {
+      if (room.players[i].alive) {
+        alive++;
+      }
+      // check if game has finished
+      end = alive < 2;
+    }
+
     // TODO ask to start again
-    return false;
+    if (end) {
+    }
+
+    return end;
   }
 
   /**
@@ -405,7 +423,7 @@ export class RoomService {
   nextPlayer(code: number, turns: number = 1): void {
     // get room
     const room: Room = this.getRoom(code);
-    room.turns -= 1;
+    room.turns--;
 
     // player ended his turns or he's attacking
     if (room.turns === 0 || turns > 1) {
@@ -413,7 +431,7 @@ export class RoomService {
       // find next player alive
       while (!alive) {
         if (room.currentPlayer < room.players.length - 1) {
-          room.currentPlayer += 1;
+          room.currentPlayer++;
         } else {
           room.currentPlayer = 0;
         }
@@ -510,7 +528,7 @@ export class RoomService {
 
       // next player if he was the current player
       if (room.currentPlayer === playerIndex) {
-        room.currentPlayer -= 1;
+        room.currentPlayer--;
         this.nextPlayer(code);
       }
     }
