@@ -390,7 +390,7 @@ export class RoomService {
         // only if player has an exploding
         if (explodingIndex > -1) {
           player.cards.splice(explodingIndex, 1);
-          this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+          this.notifyRoom(code, 'played' + card.description, id).then(() => {
             // send cards to player
             this.sendCards(code, id).then(() => {
               // put exploding back in the deck
@@ -414,12 +414,12 @@ export class RoomService {
         });
         break;
       case CardType.SKIP:
-        this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+        this.notifyRoom(code, 'played' + card.description, id).then(() => {
           this.nextPlayer(code);
         });
         break;
       case CardType.SEE_FUTURE:
-        this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+        this.notifyRoom(code, 'played' + card.description, id).then(() => {
           const seeFutureCard: SeeFutureCard = card as SeeFutureCard;
 
           // see cards
@@ -435,10 +435,12 @@ export class RoomService {
         });
         break;
       case CardType.ALTER_FUTURE:
-        // TODO
+        this.notifyRoom(code, 'played' + card.description, id).then(() => {
+          // TODO
+        });
         break;
       case CardType.SHUFFLE:
-        this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+        this.notifyRoom(code, 'played' + card.description, id).then(() => {
           // shuffle deck
           room.deck = GameUtils.shuffle(room.deck);
 
@@ -446,7 +448,7 @@ export class RoomService {
         });
         break;
       case CardType.DRAW_BOTTOM:
-        this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+        this.notifyRoom(code, 'played' + card.description, id).then(() => {
           this.drawCard(id, false);
         });
         break;
