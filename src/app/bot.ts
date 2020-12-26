@@ -107,6 +107,7 @@ export class Bot {
     this.join();
     this.player();
     this.textListener();
+    this.actionListener();
   }
 
   /**
@@ -206,6 +207,7 @@ export class Bot {
   private textListener(): void {
     this.bot.on('text', (ctx) => {
       this.registerUser(ctx);
+
       // join request
       if (
         ctx.message.reply_to_message &&
@@ -228,6 +230,38 @@ export class Bot {
           ctx.reply("Room doesn't exists");
           this.askRoomCode(ctx);
         }
+      } else {
+        // unknown requests
+        ctx.reply(
+          'Unknown command "' +
+            ctx.message.text +
+            '". Send /help for more info.'
+        );
+      }
+    });
+  }
+
+  /**
+   * Handles action messages
+   */
+  actionListener(): void {
+    this.bot.on('callback_query', (ctx) => {
+      this.registerUser(ctx);
+
+      // exploding kittes in deck
+      if (
+        ctx.callbackQuery.data.startsWith(BotAction.PUT_EXPLODING_BACK_TO_DECK)
+      ) {
+        const position: number = Number(
+          ctx.callbackQuery.data.replace(
+            BotAction.PUT_EXPLODING_BACK_TO_DECK,
+            ''
+          )
+        );
+        ctx.editMessageText('You choose position: ' + (position + 1));
+
+        // add back
+        this.roomService.addExplodingKitten(ctx.from.id, position);
       } else {
         // unknown requests
         ctx.reply(

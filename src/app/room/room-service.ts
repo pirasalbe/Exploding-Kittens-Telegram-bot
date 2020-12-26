@@ -178,13 +178,74 @@ export class RoomService {
         let message =
           // tslint:disable-next-line:quotemark
           player.cards.length > 0 ? 'You have:\n' : "You don't have cards";
+        const cards: Record<string, number> = {};
         for (const card of player.cards) {
-          message += card.description + '\n';
+          if (cards[card.description]) {
+            cards[card.description]++;
+          } else {
+            cards[card.description] = 0;
+          }
+        }
+
+        for (const card of Object.keys(cards)) {
+          message += cards[card] + ' ' + card + '\n';
         }
 
         this.telegram.sendMessage(player.id, message);
       }
     }
+  }
+
+  /**
+   * Send cards to let a player play
+   * @param code Room code
+   * @param notify Notify turn
+   */
+  sendCardsButtons(code: number, notify: boolean = true): void {
+    // get room
+    const room: Room = this.getRoom(code);
+
+    // get active player
+    const player: Player = room.players[room.currentPlayer];
+
+    if (notify) {
+      this.notifyRoom(
+        code,
+        'turn. ' +
+          room.turns +
+          ' turn' +
+          (room.turns > 1 ? 's' : '') +
+          ' left.',
+        player.id
+      );
+    }
+
+    // send cards info
+    const buttons: InlineKeyboardButton[][] = [
+      [Markup.callbackButton('Draw', BotAction.DRAW)],
+    ];
+
+    // group cards by same type
+    const rows: Record<string, number> = {};
+    let row = 1;
+    for (const card of player.cards) {
+      if (!rows[card.type]) {
+        rows[card.type] = row;
+        buttons[row] = [];
+        row++;
+      }
+
+      // add button to the row of its type
+      buttons[rows[card.type]].push(
+        Markup.callbackButton(card.description, card.type)
+      );
+    }
+
+    this.telegram.sendMessage(
+      player.id,
+      'Choose a card',
+      Markup.inlineKeyboard(buttons).oneTime().extra()
+    );
   }
 
   /**
@@ -215,7 +276,10 @@ export class RoomService {
     const card: Card = top ? room.deck.pop() : room.deck.splice(0, 1)[0];
     player.cards.push(card);
 
-    this.telegram.sendMessage(player.id, 'You drew ' + card.description);
+    this.telegram.sendMessage(
+      player.id,
+      'You drew **' + card.description + '**'
+    );
 
     // exploding kittens
     if (card instanceof ExplodingKittenCard) {
@@ -321,13 +385,18 @@ export class RoomService {
         if (explodingIndex > -1) {
           player.cards.splice(explodingIndex, 1);
           this.notifyRoom(code, 'played a ' + card.description, id);
-          this.nextPlayer(code);
+
+          // send cards to player
+          this.sendCards(code, id);
+
+          // put exploding back in the deck
+          this.requestAddExplodingKitten(id, code);
         } else {
           // else send cards buttons
           player.cards.push(card);
           // tslint:disable-next-line:quotemark
           this.telegram.sendMessage(id, "You can't use this card");
-          this.sendCardsButtons(code);
+          this.sendCardsButtons(code, false);
         }
         break;
       case CardType.ATTACK:
@@ -384,6 +453,116 @@ export class RoomService {
   }
 
   /**
+   * Ask a user where to put the exploding kitten
+   * @param id User id
+   * @param code Room code
+   */
+  private requestAddExplodingKitten(id: number, code: number): void {
+    // get room
+    const room: Room = this.getRoom(code);
+
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
+    const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
+
+    // check if there are only exploding kittens in the deck
+    const onlyExploding =
+      room.deck.findIndex((c: Card) => !(c instanceof ExplodingKittenCard)) !==
+      -1;
+
+    if (onlyExploding) {
+      // only exploding kittens, default position
+      this.addExplodingKitten(id, 0);
+    } else {
+      // prepare buttons
+      const buttons: InlineKeyboardButton[][] = [
+        [
+          // last
+          Markup.callbackButton(
+            'Top',
+            BotAction.PUT_EXPLODING_BACK_TO_DECK + room.deck.length
+          ),
+        ],
+      ];
+      let row = 1;
+      for (let i = room.deck.length - 1; i > 0; i--) {
+        // create row
+        if (!buttons[row]) {
+          buttons.push([]);
+        }
+
+        // add button
+        buttons[row].push(
+          Markup.callbackButton(
+            String(i + 1),
+            BotAction.PUT_EXPLODING_BACK_TO_DECK + i
+          )
+        );
+
+        // max 4 buttons per row
+        if (buttons[row].length > 3) {
+          row++;
+        }
+      }
+      // first
+      buttons.push([
+        Markup.callbackButton(
+          'Bottom',
+          BotAction.PUT_EXPLODING_BACK_TO_DECK + 0
+        ),
+      ]);
+
+      // ask for position
+      this.telegram.sendMessage(
+        id,
+        'Choose ' + new ExplodingKittenCard().description + ' new position',
+        Markup.inlineKeyboard(buttons).oneTime().extra()
+      );
+    }
+  }
+
+  /**
+   * Put an exploding kitten back in the deck
+   * @param id User id
+   * @param position Position in which add the card
+   */
+  addExplodingKitten(id: number, position: number): void {
+    // get room
+    const code: number = this.userService.getRoom(id);
+    const room: Room = this.getRoom(code);
+
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
+    const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
+
+    // put exploding kitten in deck
+    room.deck.splice(position, 0, new ExplodingKittenCard());
+
+    // next player
+    this.nextPlayer(code);
+  }
+
+  /**
    * Check if game has ended and a player has won
    * @param code Room code
    */
@@ -393,10 +572,12 @@ export class RoomService {
 
     let end = false;
     let alive = 0;
+    let winner: number = null;
 
     // count player alive
     for (let i = 0; i < room.players.length && !end; i++) {
       if (room.players[i].alive) {
+        winner = room.players[i].id;
         alive++;
       }
       // check if game has finished
@@ -405,41 +586,10 @@ export class RoomService {
 
     // TODO ask to start again
     if (end) {
+      this.notifyRoom(code, 'won the game', winner);
     }
 
     return end;
-  }
-
-  /**
-   * Send cards to let a player play
-   * @param code Room code
-   */
-  sendCardsButtons(code: number): void {
-    // get room
-    const room: Room = this.getRoom(code);
-
-    // get active player
-    const player: Player = room.players[room.currentPlayer];
-
-    this.notifyRoom(
-      code,
-      'turn. ' + room.turns + ' turn' + (room.turns > 1 ? 's' : '') + ' left.',
-      player.id
-    );
-
-    // send cards info
-    const buttons: InlineKeyboardButton[][] = [
-      [Markup.callbackButton('Draw', BotAction.DRAW)],
-    ];
-    for (const card of player.cards) {
-      buttons.push([Markup.callbackButton(card.description, card.type)]);
-    }
-
-    this.telegram.sendMessage(
-      player.id,
-      'Choose a card',
-      Markup.inlineKeyboard(buttons).oneTime().extra()
-    );
   }
 
   /**
@@ -450,7 +600,13 @@ export class RoomService {
   nextPlayer(code: number, turns: number = 1): void {
     // get room
     const room: Room = this.getRoom(code);
-    room.turns--;
+
+    // player is not alive
+    if (!room.players[room.currentPlayer].alive) {
+      room.turns = 0;
+    } else {
+      room.turns--;
+    }
 
     // player ended his turns or he's attacking
     if (room.turns === 0 || turns > 1) {
@@ -548,15 +704,15 @@ export class RoomService {
       // if there are no more players
       if (room.players.length === 0) {
         this.destroyRoom(code);
-      }
+      } else {
+        // check if last player alive
+        this.checkEndGame(code);
 
-      // check if last player alive
-      this.checkEndGame(code);
-
-      // next player if he was the current player
-      if (room.currentPlayer === playerIndex) {
-        room.currentPlayer--;
-        this.nextPlayer(code);
+        // next player if he was the current player
+        if (room.currentPlayer === playerIndex) {
+          room.currentPlayer--;
+          this.nextPlayer(code);
+        }
       }
     }
   }
