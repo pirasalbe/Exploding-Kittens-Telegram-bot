@@ -6,6 +6,7 @@ import { GameFactory } from '../game/game-factory';
 import { UserService } from '../user/user-service';
 import { BotAction } from './../bot-action.enum';
 import {
+  AlterFutureCard,
   AttackCard,
   Card,
   CardType,
@@ -436,7 +437,9 @@ export class RoomService {
         break;
       case CardType.ALTER_FUTURE:
         this.notifyRoom(code, 'played' + card.description, id).then(() => {
-          // TODO
+          const alterFutureCard: AlterFutureCard = card as AlterFutureCard;
+
+          this.alterFuture(id, String(alterFutureCard.count));
         });
         break;
       case CardType.SHUFFLE:
@@ -572,6 +575,110 @@ export class RoomService {
 
     // next player
     this.nextPlayer(code);
+  }
+
+  /**
+   * Alter the future
+   * @param id User id
+   * @param data Selected cards
+   */
+  alterFuture(id: number, data: string): void {
+    // get room
+    const code: number = this.userService.getRoom(id);
+    const room: Room = this.getRoom(code);
+
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
+    const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
+
+    // split info [card to send, ...cards selected]
+    const info: string[] = data.split(',');
+    const count: number =
+      Number(info[0]) < room.deck.length ? Number(info[0]) : room.deck.length;
+    const cards: string[] = info.slice(1);
+
+    let message = cards.length > 0 ? 'Top:\n' : '';
+    for (const i of cards) {
+      message += room.deck[Number(i)].description + '\n';
+    }
+
+    if (cards.length === count) {
+      // get cards
+      const temp: Record<string, Card> = {};
+      for (const i of cards) {
+        temp[i] = room.deck[Number(i)];
+      }
+
+      // alter order
+      let e = room.deck.length - 1;
+      for (const i of cards) {
+        room.deck[e] = temp[i];
+        e--;
+      }
+
+      // send buttons
+      this.notifyRoom(code, 'Altered the future', id).then(() => {
+        this.sendCardsButtons(code);
+      });
+    } else if (cards.length === count - 1) {
+      // have all the cards, ask confirmation
+      // get last card
+      let e = room.deck.length - 1;
+      for (let i = 0; i < count && e >= 0; i++, e--) {
+        if (!cards.includes(String(e))) {
+          message += room.deck[e].description + '\n';
+          info.push(String(e));
+        }
+      }
+
+      // ask confirmation
+      this.telegram.sendMessage(
+        id,
+        message + 'Is it ok?',
+        Markup.inlineKeyboard([
+          Markup.callbackButton(
+            'Start over',
+            BotAction.ALTER_THE_FUTURE_ACTION + ',' + count
+          ),
+          Markup.callbackButton(
+            'Ok',
+            BotAction.ALTER_THE_FUTURE_ACTION + ',' + info.join(',')
+          ),
+        ]).extra()
+      );
+    } else {
+      // send card buttons
+      let e = room.deck.length - 1;
+      const buttons: InlineKeyboardButton[] = [];
+      for (let i = 0; i < count && e >= 0; i++, e--) {
+        if (!cards.includes(String(e))) {
+          // button with previous data
+          buttons.push(
+            Markup.callbackButton(
+              room.deck[e].description,
+              BotAction.ALTER_THE_FUTURE_ACTION + ',' + data + ',' + e
+            )
+          );
+        }
+      }
+
+      // ask next card
+      this.telegram.sendMessage(
+        id,
+        message + 'Select ' + (info.length > 1 ? 'next' : 'top') + ' card:',
+        Markup.inlineKeyboard(buttons).extra()
+      );
+    }
   }
 
   /**
@@ -712,7 +819,7 @@ export class RoomService {
         // only if player has an exploding
         if (explodingIndex > -1) {
           const card: Card = room.deck.splice(explodingIndex, 1)[0];
-          message += ' Removed an ' + card.description;
+          message += ' Removed ' + card.description;
         }
       }
 

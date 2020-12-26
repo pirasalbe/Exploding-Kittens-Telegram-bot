@@ -266,6 +266,17 @@ export class Bot {
 
         // add back
         this.roomService.addExplodingKitten(ctx.from.id, position);
+      } else if (
+        ctx.callbackQuery.data.startsWith(BotAction.ALTER_THE_FUTURE_ACTION)
+      ) {
+        const data: string = ctx.callbackQuery.data.replace(
+          BotAction.ALTER_THE_FUTURE_ACTION + ',',
+          ''
+        );
+        ctx.editMessageText('Received');
+
+        // alter future
+        this.roomService.alterFuture(ctx.from.id, data);
       } else {
         // unknown requests
         ctx.reply(

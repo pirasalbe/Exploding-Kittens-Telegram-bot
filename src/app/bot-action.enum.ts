@@ -8,4 +8,5 @@ export enum BotAction {
   EXPLODE = 'explode',
   DEFUSE_KITTEN = 'defuse_kitten',
   PUT_EXPLODING_BACK_TO_DECK = 'exploding_back_deck',
+  ALTER_THE_FUTURE_ACTION = 'alter_future_action',
 }
