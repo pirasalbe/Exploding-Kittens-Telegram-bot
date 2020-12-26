@@ -35,6 +35,10 @@ export class DefuseCard implements Card {
 export class AttackCard implements Card {
   type: CardType = CardType.ATTACK;
   description = '⚡️ Attack ⚡️';
+
+  /**
+   * Turns to give
+   */
   turns = 2;
 }
 
@@ -46,13 +50,25 @@ export class SkipCard implements Card {
 export class SeeFutureCard implements Card {
   type: CardType = CardType.SEE_FUTURE;
   description = '🔮 See the future 🔮';
+
+  /**
+   * Cards to see
+   */
   count = 3;
 }
 
 export class AlterFutureCard implements Card {
   type: CardType = CardType.ALTER_FUTURE;
   description = '⚛️ Alter the future ⚛️';
+
+  /**
+   * Cards to alter
+   */
   count = 3;
+
+  /**
+   * New order
+   */
   cards: Card[] = [];
 }
 
@@ -69,9 +85,19 @@ export class DrawBottomCard implements Card {
 export class FavorCard implements Card {
   type: CardType = CardType.FAVOR;
   description = '🙏 Favor 🙏';
+
+  /**
+   * Player who will do the favor
+   */
+  otherPlayer: number;
 }
 
 export class CatCard implements Card {
   type: CardType = CardType.CAT;
   description = '🥷 Steal 🥷';
+
+  /**
+   * Player to steal
+   */
+  otherPlayer: number;
 }

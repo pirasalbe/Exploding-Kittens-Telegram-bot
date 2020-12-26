@@ -277,6 +277,18 @@ export class Bot {
 
         // alter future
         this.roomService.alterFuture(ctx.from.id, data);
+      } else if (
+        ctx.callbackQuery.data.startsWith(BotAction.STEAL_FROM_PLAYER)
+      ) {
+        ctx.editMessageText('Player selected');
+
+        // TODO steal
+      } else if (
+        ctx.callbackQuery.data.startsWith(BotAction.FAVOR_FROM_PLAYER)
+      ) {
+        ctx.editMessageText('Player selected');
+
+        // TODO favor
       } else {
         // unknown requests
         ctx.reply(

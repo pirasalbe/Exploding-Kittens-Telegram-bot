@@ -469,11 +469,13 @@ export class RoomService {
         break;
       case CardType.FAVOR:
         this.notifyRoom(code, 'played ' + card.description, id).then(() => {
+          room.card = card;
           this.chooseOtherPlayer(id, BotAction.FAVOR_FROM_PLAYER);
         });
         break;
       case CardType.CAT:
         this.notifyRoom(code, 'played ' + card.description, id).then(() => {
+          room.card = card;
           this.chooseOtherPlayer(id, BotAction.STEAL_FROM_PLAYER);
         });
         break;
@@ -710,7 +712,6 @@ export class RoomService {
    * @param action Action to use
    */
   private chooseOtherPlayer(id: number, action: string): void {
-    // TODO finish and save data
     // get room
     const code: number = this.userService.getRoom(id);
     const room: Room = this.getRoom(code);
@@ -732,7 +733,7 @@ export class RoomService {
     // players button
     const buttons: InlineKeyboardButton[] = [];
     for (const p of room.players) {
-      if (p.id !== id) {
+      if (p.id !== id && p.alive) {
         // button action
         buttons.push(
           Markup.callbackButton(
@@ -742,6 +743,8 @@ export class RoomService {
         );
       }
     }
+
+    // TODO if only one player no need to ask
 
     // ask which player
     this.telegram.sendMessage(
