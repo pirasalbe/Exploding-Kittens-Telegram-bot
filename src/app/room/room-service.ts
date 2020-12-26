@@ -4,7 +4,14 @@ import { InlineKeyboardButton } from 'telegraf/typings/markup';
 import { GameFactory } from '../game/game-factory';
 import { UserService } from '../user/user-service';
 import { BotAction } from './../bot-action.enum';
-import { AttackCard, Card, CardType, DefuseCard, ExplodingKittenCard, SeeFutureCard } from './../game/card';
+import {
+  AttackCard,
+  Card,
+  CardType,
+  DefuseCard,
+  ExplodingKittenCard,
+  SeeFutureCard,
+} from './../game/card';
 import { GameUtils } from './../game/game-utils';
 import { Player } from './player';
 import { Room } from './room';
@@ -198,6 +205,13 @@ export class RoomService {
 
     // get current player
     const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
+
     const card: Card = top ? room.deck.pop() : room.deck.splice(0, 1)[0];
     player.cards.push(card);
 
@@ -245,6 +259,14 @@ export class RoomService {
   }
 
   /**
+   * Notify user that it's not his turn
+   * @param id User id
+   */
+  private sendWaitYourTurn(id: number): void {
+    this.telegram.sendMessage(id, 'Wait for your turn.');
+  }
+
+  /**
    * Play user card
    * @param id User id
    * @param cardType Card to play
@@ -261,6 +283,12 @@ export class RoomService {
     }
 
     const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
 
     // get played card
     const cardIndex = player.cards.findIndex((c: Card) => c.type === cardType);
@@ -320,13 +348,12 @@ export class RoomService {
 
         // see cards
         let e = room.deck.length - 1;
-        for (let i = 0; i < seeFutureCard.count && e > 0; i++) {
-          this.telegram.sendMessage(
-            id,
-            'Card ' + (e + 1) + ' is ' + room.deck[e].description
-          );
-          e--;
+        let message = 'Top card:\n';
+        for (let i = 0; i < seeFutureCard.count && e >= 0; i++, e--) {
+          message +=
+            'Card ' + (e + 1) + ' is ' + room.deck[e].description + '\n';
         }
+        this.telegram.sendMessage(id, message);
 
         this.sendCardsButtons(code);
         break;
