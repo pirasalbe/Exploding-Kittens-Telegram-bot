@@ -43,7 +43,7 @@ export abstract class Mode {
     const cards: Card[] = [];
 
     this.pushCards(cards, new ExplodingKittenCard(), players - 1);
-    this.pushCards(cards, new DefuseCard(), players / 1);
+    this.pushCards(cards, new DefuseCard(), players / 2);
 
     return cards;
   }

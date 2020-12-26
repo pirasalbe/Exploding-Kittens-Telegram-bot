@@ -1,5 +1,6 @@
 import { Extra, Markup, Telegram } from 'telegraf';
 import { InlineKeyboardButton } from 'telegraf/typings/markup';
+import { Message } from 'telegraf/typings/telegram-types';
 
 import { GameFactory } from '../game/game-factory';
 import { UserService } from '../user/user-service';
@@ -98,20 +99,20 @@ export class RoomService {
   joinGame(id: number, code: number): Room {
     const room: Room = this.getRoom(code);
     if (room && !room.running && room.players.length < room.mode.maxPlayers) {
-      // add user
-      room.players.push(new Player(id));
-      this.userService.setRoom(id, code);
-
       // notify players
       this.notifyRoom(
         code,
         'joined the room. [' +
-          room.players.length +
+          (room.players.length + 1) +
           '/' +
           room.mode.maxPlayers +
           '] players.',
         id
       );
+
+      // add user
+      room.players.push(new Player(id));
+      this.userService.setRoom(id, code);
     }
 
     return room;
@@ -169,10 +170,11 @@ export class RoomService {
    * @param code Room code
    * @param id Specific user id
    */
-  sendCards(code: number, id: number = -1): void {
+  sendCards(code: number, id: number = -1): Promise<Message[]> {
     // get room
     const room: Room = this.getRoom(code);
 
+    const result: Promise<Message>[] = [];
     for (const player of room.players) {
       if (id === player.id || id === -1) {
         let message =
@@ -191,9 +193,11 @@ export class RoomService {
           message += cards[card] + ' ' + card + '\n';
         }
 
-        this.telegram.sendMessage(player.id, message);
+        result.push(this.telegram.sendMessage(player.id, message));
       }
     }
+
+    return Promise.all(result);
   }
 
   /**
@@ -276,43 +280,43 @@ export class RoomService {
     const card: Card = top ? room.deck.pop() : room.deck.splice(0, 1)[0];
     player.cards.push(card);
 
-    this.telegram.sendMessage(
-      player.id,
-      'You drew *' + card.description + '*',
-      Extra.markdown().markup('')
-    );
-
-    // exploding kittens
-    if (card instanceof ExplodingKittenCard) {
-      this.notifyRoom(code, 'drew an ' + card.description, id);
-      // if has defuse ask to play it
-      if (player.cards.find((c: Card) => c instanceof DefuseCard)) {
-        this.telegram.sendMessage(
-          id,
-          'Do you want to defuse it?',
-          Markup.inlineKeyboard([
-            Markup.callbackButton('Yes', BotAction.DEFUSE_KITTEN),
-            Markup.callbackButton('No', BotAction.EXPLODE),
-          ])
-            .oneTime()
-            .extra()
-        );
-      } else {
-        // else explode
-        this.playCard(id, CardType.EXPLODING_KITTEN);
-      }
-    } else {
-      // add card to player's deck
-      this.sendCards(code, id);
-      // number of cards
-      this.notifyRoom(
-        code,
-        'drew a card. ' + room.deck.length + ' cards left in the deck',
-        id
-      );
-
-      this.nextPlayer(code);
-    }
+    this.telegram
+      .sendMessage(player.id, card.description, Extra.markdown().markup(''))
+      .then(() => {
+        // exploding kittens
+        if (card instanceof ExplodingKittenCard) {
+          this.notifyRoom(code, 'drew an ' + card.description, id).then(() => {
+            // if has defuse ask to play it
+            if (player.cards.find((c: Card) => c instanceof DefuseCard)) {
+              this.telegram.sendMessage(
+                id,
+                'Do you want to defuse it?',
+                Markup.inlineKeyboard([
+                  Markup.callbackButton('Yes', BotAction.DEFUSE_KITTEN),
+                  Markup.callbackButton('No', BotAction.EXPLODE),
+                ])
+                  .oneTime()
+                  .extra()
+              );
+            } else {
+              // else explode
+              this.playCard(id, CardType.EXPLODING_KITTEN);
+            }
+          });
+        } else {
+          // add card to player's deck
+          this.sendCards(code, id).then(() => {
+            // number of cards
+            this.notifyRoom(
+              code,
+              'drew a card. ' + room.deck.length + ' cards left in the deck',
+              id
+            ).then(() => {
+              this.nextPlayer(code);
+            });
+          });
+        }
+      });
   }
 
   /**
@@ -371,12 +375,13 @@ export class RoomService {
     switch (cardType) {
       case CardType.EXPLODING_KITTEN:
         // explode
-        this.notifyRoom(code, 'has exploded', id);
-        player.alive = false;
-        player.cards = [];
-        if (!this.checkEndGame(code)) {
-          this.nextPlayer(code);
-        }
+        this.notifyRoom(code, 'has exploded 💥💥💥', id).then(() => {
+          player.alive = false;
+          player.cards = [];
+          if (!this.checkEndGame(code)) {
+            this.nextPlayer(code);
+          }
+        });
         break;
       case CardType.DEFUSE:
         const explodingIndex: number = player.cards.findIndex(
@@ -385,61 +390,65 @@ export class RoomService {
         // only if player has an exploding
         if (explodingIndex > -1) {
           player.cards.splice(explodingIndex, 1);
-          this.notifyRoom(code, 'played a ' + card.description, id);
-
-          // send cards to player
-          this.sendCards(code, id);
-
-          // put exploding back in the deck
-          this.sendAddExplodingKitten(id, code);
+          this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+            // send cards to player
+            this.sendCards(code, id).then(() => {
+              // put exploding back in the deck
+              this.sendAddExplodingKitten(id, code);
+            });
+          });
         } else {
           // else send cards buttons
           player.cards.push(card);
           // tslint:disable-next-line:quotemark
-          this.telegram.sendMessage(id, "You can't use this card");
-          this.sendCardsButtons(code, false);
+          this.telegram.sendMessage(id, "You can't use this card").then(() => {
+            this.sendCardsButtons(code, false);
+          });
         }
         break;
       case CardType.ATTACK:
-        this.notifyRoom(code, 'played an ' + card.description, id);
+        this.notifyRoom(code, 'played an ' + card.description, id).then(() => {
+          const attackCard: AttackCard = card as AttackCard;
 
-        const attackCard: AttackCard = card as AttackCard;
-
-        this.nextPlayer(code, attackCard.turns);
+          this.nextPlayer(code, attackCard.turns);
+        });
         break;
       case CardType.SKIP:
-        this.notifyRoom(code, 'played a ' + card.description, id);
-        this.nextPlayer(code);
+        this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+          this.nextPlayer(code);
+        });
         break;
       case CardType.SEE_FUTURE:
-        this.notifyRoom(code, 'played a ' + card.description, id);
+        this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+          const seeFutureCard: SeeFutureCard = card as SeeFutureCard;
 
-        const seeFutureCard: SeeFutureCard = card as SeeFutureCard;
-
-        // see cards
-        let e = room.deck.length - 1;
-        let message = 'Top card:\n';
-        for (let i = 0; i < seeFutureCard.count && e >= 0; i++, e--) {
-          message +=
-            'Card ' + (e + 1) + ' is ' + room.deck[e].description + '\n';
-        }
-        this.telegram.sendMessage(id, message);
-
-        this.sendCardsButtons(code);
+          // see cards
+          let e = room.deck.length - 1;
+          let message = 'Top card:\n';
+          for (let i = 0; i < seeFutureCard.count && e >= 0; i++, e--) {
+            message +=
+              'Card ' + (e + 1) + ' is ' + room.deck[e].description + '\n';
+          }
+          this.telegram.sendMessage(id, message).then(() => {
+            this.sendCardsButtons(code);
+          });
+        });
         break;
       case CardType.ALTER_FUTURE:
         // TODO
         break;
       case CardType.SHUFFLE:
-        this.notifyRoom(code, 'played a ' + card.description, id);
-        // shuffle deck
-        room.deck = GameUtils.shuffle(room.deck);
+        this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+          // shuffle deck
+          room.deck = GameUtils.shuffle(room.deck);
 
-        this.sendCardsButtons(code);
+          this.sendCardsButtons(code);
+        });
         break;
       case CardType.DRAW_BOTTOM:
-        this.notifyRoom(code, 'played a ' + card.description, id);
-        this.drawCard(id, false);
+        this.notifyRoom(code, 'played a ' + card.description, id).then(() => {
+          this.drawCard(id, false);
+        });
         break;
       case CardType.FAVOR:
         // TODO
@@ -576,9 +585,9 @@ export class RoomService {
     let winner: number = null;
 
     // count player alive
-    for (let i = 0; i < room.players.length && !end; i++) {
-      if (room.players[i].alive) {
-        winner = room.players[i].id;
+    for (const player of room.players) {
+      if (player.alive) {
+        winner = player.id;
         alive++;
       }
       // check if game has finished
@@ -587,7 +596,7 @@ export class RoomService {
 
     // TODO ask to start again
     if (end) {
-      this.notifyRoom(code, 'won the game', winner);
+      this.notifyRoom(code, 'won the game 👑👑🐈', winner);
     }
 
     return end;
@@ -733,7 +742,11 @@ export class RoomService {
    * @param message Message to send
    * @param userId Username to add at the beginnig of the message
    */
-  private notifyRoom(code: number, message: string, userId: number = -1): void {
+  private notifyRoom(
+    code: number,
+    message: string,
+    userId: number = -1
+  ): Promise<Message[]> {
     const room: Room = this.getRoom(code);
 
     // add username
@@ -741,8 +754,11 @@ export class RoomService {
       message = '@' + this.userService.getUsername(userId) + ' ' + message;
     }
 
+    const result: Promise<Message>[] = [];
     for (const player of room.players) {
-      this.telegram.sendMessage(player.id, message);
+      result.push(this.telegram.sendMessage(player.id, message));
     }
+
+    return Promise.all(result);
   }
 }

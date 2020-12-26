@@ -230,8 +230,9 @@ export class Bot {
           );
         } else {
           // tslint:disable-next-line:quotemark
-          ctx.reply("Room doesn't exists");
-          this.askRoomCode(ctx);
+          ctx.reply("Room doesn't exists").then(() => {
+            this.askRoomCode(ctx);
+          });
         }
       } else {
         // unknown requests
@@ -285,8 +286,7 @@ export class Bot {
      */
     this.bot.action(BotAction.DRAW, (ctx) => {
       this.registerUser(ctx);
-      ctx.editMessageText('You draw a card');
-
+      ctx.editMessageText('You drew:');
       this.roomService.drawCard(ctx.from.id);
     });
 

@@ -24,53 +24,53 @@ export enum CardType {
 
 export class ExplodingKittenCard implements Card {
   type: CardType = CardType.EXPLODING_KITTEN;
-  description = 'Exploding Kitten';
+  description = '💣 Exploding Kitten 💣';
 }
 
 export class DefuseCard implements Card {
   type: CardType = CardType.DEFUSE;
-  description = 'Defuse';
+  description = '✳️ Defuse ✳️';
 }
 
 export class AttackCard implements Card {
   type: CardType = CardType.ATTACK;
-  description = 'Attack';
+  description = '⚡️ Attack ⚡️';
   turns = 2;
 }
 
 export class SkipCard implements Card {
   type: CardType = CardType.SKIP;
-  description = 'Skip';
+  description = '🌀 Skip 🌀';
 }
 
 export class SeeFutureCard implements Card {
   type: CardType = CardType.SEE_FUTURE;
-  description = 'See the future';
+  description = '🔮 See the future 🔮';
   count = 3;
 }
 
 export class AlterFutureCard implements Card {
   type: CardType = CardType.ALTER_FUTURE;
-  description = 'Alter the future';
+  description = '⚛️ Alter the future ⚛️';
   count = 3;
 }
 
 export class ShuffleCard implements Card {
   type: CardType = CardType.SHUFFLE;
-  description = 'Shuffle';
+  description = '🔀 Shuffle 🔀';
 }
 
 export class DrawBottomCard implements Card {
   type: CardType = CardType.DRAW_BOTTOM;
-  description = 'Draw from the bottom';
+  description = '🔚 Draw from the bottom 🔚';
 }
 
 export class FavorCard implements Card {
   type: CardType = CardType.FAVOR;
-  description = 'Favor';
+  description = '🙏 Favor 🙏';
 }
 
 export class CatCard implements Card {
   type: CardType = CardType.CAT;
-  description = 'Steal';
+  description = '🥷 Steal 🥷';
 }
