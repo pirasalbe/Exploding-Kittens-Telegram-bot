@@ -41,6 +41,11 @@ export class Room {
    */
   running: boolean;
 
+  /**
+   * Card that is beign played
+   */
+  card: Card;
+
   constructor(id: number, mode: Mode) {
     this.id = id;
     this.players = [];

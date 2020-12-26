@@ -53,6 +53,7 @@ export class AlterFutureCard implements Card {
   type: CardType = CardType.ALTER_FUTURE;
   description = '⚛️ Alter the future ⚛️';
   count = 3;
+  cards: Card[] = [];
 }
 
 export class ShuffleCard implements Card {

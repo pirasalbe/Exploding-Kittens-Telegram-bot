@@ -270,7 +270,7 @@ export class Bot {
         ctx.callbackQuery.data.startsWith(BotAction.ALTER_THE_FUTURE_ACTION)
       ) {
         const data: string = ctx.callbackQuery.data.replace(
-          BotAction.ALTER_THE_FUTURE_ACTION + ',',
+          BotAction.ALTER_THE_FUTURE_ACTION,
           ''
         );
         ctx.editMessageText('Received');
