@@ -1,4 +1,4 @@
-import { Markup, Telegram } from 'telegraf';
+import { Extra, Markup, Telegram } from 'telegraf';
 import { InlineKeyboardButton } from 'telegraf/typings/markup';
 
 import { GameFactory } from '../game/game-factory';
@@ -183,7 +183,7 @@ export class RoomService {
           if (cards[card.description]) {
             cards[card.description]++;
           } else {
-            cards[card.description] = 0;
+            cards[card.description] = 1;
           }
         }
 
@@ -278,7 +278,8 @@ export class RoomService {
 
     this.telegram.sendMessage(
       player.id,
-      'You drew **' + card.description + '**'
+      'You drew *' + card.description + '*',
+      Extra.markdown().markup('')
     );
 
     // exploding kittens
@@ -390,7 +391,7 @@ export class RoomService {
           this.sendCards(code, id);
 
           // put exploding back in the deck
-          this.requestAddExplodingKitten(id, code);
+          this.sendAddExplodingKitten(id, code);
         } else {
           // else send cards buttons
           player.cards.push(card);
@@ -457,7 +458,7 @@ export class RoomService {
    * @param id User id
    * @param code Room code
    */
-  private requestAddExplodingKitten(id: number, code: number): void {
+  private sendAddExplodingKitten(id: number, code: number): void {
     // get room
     const room: Room = this.getRoom(code);
 
@@ -477,7 +478,7 @@ export class RoomService {
 
     // check if there are only exploding kittens in the deck
     const onlyExploding =
-      room.deck.findIndex((c: Card) => !(c instanceof ExplodingKittenCard)) !==
+      room.deck.findIndex((c: Card) => !(c instanceof ExplodingKittenCard)) ===
       -1;
 
     if (onlyExploding) {
@@ -600,12 +601,15 @@ export class RoomService {
   nextPlayer(code: number, turns: number = 1): void {
     // get room
     const room: Room = this.getRoom(code);
+    room.turns--;
 
     // player is not alive
-    if (!room.players[room.currentPlayer].alive) {
+    if (
+      !room.players[room.currentPlayer] ||
+      !room.players[room.currentPlayer].alive ||
+      room.turns < 0
+    ) {
       room.turns = 0;
-    } else {
-      room.turns--;
     }
 
     // player ended his turns or he's attacking
@@ -668,7 +672,9 @@ export class RoomService {
    * Exit a game
    * @param id Player id
    */
-  exitGame(id: number): void {
+  exitGame(id: number): boolean {
+    let exit = false;
+
     // reset user room
     const code = this.userService.getRoom(id);
     this.userService.setRoom(id);
@@ -676,6 +682,7 @@ export class RoomService {
     // remove user from room
     const room = this.getRoom(code);
     if (room) {
+      exit = true;
       const playerIndex = room.players.findIndex((p: Player) => p.id === id);
       room.players.splice(playerIndex, 1);
 
@@ -705,16 +712,19 @@ export class RoomService {
       if (room.players.length === 0) {
         this.destroyRoom(code);
       } else {
-        // check if last player alive
-        this.checkEndGame(code);
-
-        // next player if he was the current player
-        if (room.currentPlayer === playerIndex) {
-          room.currentPlayer--;
-          this.nextPlayer(code);
+        // check if one player alive
+        if (!this.checkEndGame(code)) {
+          // next player if he was the current player
+          if (room.currentPlayer === playerIndex) {
+            room.currentPlayer--;
+            room.turns = 0;
+            this.nextPlayer(code);
+          }
         }
       }
     }
+
+    return exit;
   }
 
   /**
@@ -728,7 +738,7 @@ export class RoomService {
 
     // add username
     if (userId !== -1) {
-      message = this.userService.getUsername(userId) + ' ' + message;
+      message = '@' + this.userService.getUsername(userId) + ' ' + message;
     }
 
     for (const player of room.players) {
