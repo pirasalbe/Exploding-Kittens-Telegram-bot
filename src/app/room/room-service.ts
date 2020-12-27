@@ -656,26 +656,28 @@ export class RoomService {
     // card info
     const count: number =
       card.count < room.deck.length ? card.count : room.deck.length;
-    const cards: Card[] = card.cards;
 
     // reset action
     if (data === BotAction.ALTER_THE_FUTURE_RESET) {
       card.cards = [];
     } else if (data !== BotAction.ALTER_THE_FUTURE_OK) {
+      const position: number = Number(data);
       // add action
-      cards.push(room.deck[Number(data)]);
+      card.cards.push({ position, card: room.deck[position] });
     }
+
+    const cards: { position: number; card: Card }[] = card.cards;
 
     let message = cards.length > 0 ? 'Top:\n' : '';
     for (const c of cards) {
-      message += c.description + '\n';
+      message += c.card.description + '\n';
     }
 
     if (data === BotAction.ALTER_THE_FUTURE_OK && cards.length === count) {
       // alter order
       let e = room.deck.length - 1;
       for (const c of cards) {
-        room.deck[e] = c;
+        room.deck[e] = c.card;
         e--;
       }
 
@@ -689,9 +691,14 @@ export class RoomService {
       // get last card
       let e = room.deck.length - 1;
       for (let i = 0; i < count && e >= 0; i++, e--) {
-        if (!cards.includes(room.deck[e])) {
+        if (
+          cards.findIndex(
+            (c: { position: number; card: Card }) =>
+              c.card === room.deck[e] && c.position === e
+          ) === -1
+        ) {
           message += room.deck[e].description + '\n';
-          cards.push(room.deck[e]);
+          cards.push({ position: e, card: room.deck[e] });
         }
       }
 
@@ -715,7 +722,12 @@ export class RoomService {
       let e = room.deck.length - 1;
       const buttons: InlineKeyboardButton[] = [];
       for (let i = 0; i < count && e >= 0; i++, e--) {
-        if (!cards.includes(room.deck[e])) {
+        if (
+          cards.findIndex(
+            (c: { position: number; card: Card }) =>
+              c.card === room.deck[e] && c.position === e
+          ) === -1
+        ) {
           // button with previous data
           buttons.push(
             Markup.callbackButton(

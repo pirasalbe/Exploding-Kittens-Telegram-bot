@@ -71,7 +71,7 @@ export class AlterFutureCard implements Card {
   /**
    * New order
    */
-  cards: Card[] = [];
+  cards: { position: number; card: Card }[] = [];
 }
 
 export class ShuffleCard implements Card {
