@@ -9,10 +9,14 @@ import {
   AlterFutureCard,
   AttackCard,
   Card,
+  CardDescription,
+  CardFactory,
   CardType,
+  CatCard,
   DefuseCard,
   ExplodingKittenCard,
   FavorCard,
+  OtherPlayerCard,
   SeeFutureCard,
 } from './../game/card';
 import { GameUtils } from './../game/game-utils';
@@ -100,7 +104,7 @@ export class RoomService {
    * @param host Define the host
    */
   joinGame(id: number, code: number, host: boolean = false): Room {
-    const room: Room = this.getRoom(code);
+    let room: Room = this.getRoom(code);
     if (room && !room.running && room.players.length < room.mode.maxPlayers) {
       // notify players
       this.notifyRoom(
@@ -116,6 +120,8 @@ export class RoomService {
       // add user
       room.players.push(new Player(id, host));
       this.userService.setRoom(id, code);
+    } else {
+      room = null;
     }
 
     return room;
@@ -148,7 +154,7 @@ export class RoomService {
       // give cards to each player
       for (const player of room.players) {
         player.cards.push(new DefuseCard());
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 6; i++) {
           player.cards.push(room.deck.pop());
         }
 
@@ -210,7 +216,7 @@ export class RoomService {
    * @param code Room code
    * @param notify Notify turn
    */
-  sendCardsButtons(code: number, notify: boolean = true): void {
+  private sendCardsButtons(code: number, notify: boolean = true): void {
     // get room
     const room: Room = this.getRoom(code);
 
@@ -501,22 +507,28 @@ export class RoomService {
       case CardType.FAVOR:
         this.notifyRoom(code, 'played ' + card.description, id).then(() => {
           room.card = card;
-          this.chooseOtherPlayer(id, BotAction.FAVOR_FROM_PLAYER);
+          this.chooseOtherPlayer(
+            id,
+            BotAction.FAVOR_FROM_PLAYER,
+            (user: number, other: number) => {
+              this.askFavor(user, other);
+            }
+          );
         });
         break;
-      case CardType.CAT:
-        this.notifyRoom(code, 'played ' + card.description, id).then(() => {
-          // TODO cat cards
-          room.card = card;
-          this.chooseOtherPlayer(id, BotAction.STEAL_FROM_PLAYER);
-        });
+      case CardType.FERAL_CAT:
+      case CardType.TACOCAT:
+      case CardType.CATTERMELON:
+      case CardType.HAIRY_POTATO_CAT:
+      case CardType.BEARD_CAT:
+      case CardType.RAINBOW_CAT:
+        this.playCatCards(id, card);
         break;
       default:
         console.log('Card not recognized', cardType);
         break;
     }
   }
-
   /**
    * Ask a user where to put the exploding kitten
    * @param id User id
@@ -590,7 +602,7 @@ export class RoomService {
       // ask for position
       this.telegram.sendMessage(
         id,
-        'Choose ' + new ExplodingKittenCard().description + ' new position',
+        'Choose ' + CardDescription.EXPLODING_KITTEN + ' new position',
         Markup.inlineKeyboard(buttons).oneTime().extra()
       );
     }
@@ -755,8 +767,13 @@ export class RoomService {
    * Ask which player
    * @param id User id
    * @param action Action to use
+   * @param onePlayer Function to call with one player
    */
-  private chooseOtherPlayer(id: number, action: string): void {
+  private chooseOtherPlayer(
+    id: number,
+    action: string,
+    onePlayer: (id: number, other: number) => void
+  ): void {
     // get room
     const code: number = this.userService.getRoom(id);
     const room: Room = this.getRoom(code);
@@ -801,9 +818,9 @@ export class RoomService {
       );
     } else {
       this.telegram
-        .sendMessage(id, 'Favor from: ' + this.userService.getUsername(other))
+        .sendMessage(id, this.userService.getUsername(other) + ' selected')
         .then(() => {
-          this.askFavor(id, other);
+          onePlayer(id, other);
         });
     }
   }
@@ -843,35 +860,43 @@ export class RoomService {
     // player not found, ask another player
     if (!card.otherPlayer) {
       this.telegram.sendMessage(id, 'Player not found').then(() => {
-        this.chooseOtherPlayer(id, BotAction.FAVOR_FROM_PLAYER);
+        this.chooseOtherPlayer(
+          id,
+          BotAction.FAVOR_FROM_PLAYER,
+          (user: number, otherUser: number) => {
+            this.askFavor(user, otherUser);
+          }
+        );
       });
     } else {
-      this.telegram
-        .sendMessage(other, this.userService.getUsername(id) + ' asked a favor')
-        .then(() => {
-          if (card.otherPlayer.cards.length > 1) {
-            // choose card
-            const buttons: InlineKeyboardButton[][] = this.getCardsButtons(
-              card.otherPlayer,
-              false,
-              BotAction.DO_FAVOR
-            );
+      this.notifyRoom(
+        code,
+        'asked a favor to @' + this.userService.getUsername(other),
+        id
+      ).then(() => {
+        if (card.otherPlayer.cards.length > 1) {
+          // choose card
+          const buttons: InlineKeyboardButton[][] = this.getCardsButtons(
+            card.otherPlayer,
+            false,
+            BotAction.DO_FAVOR
+          );
 
-            this.telegram.sendMessage(
-              other,
-              'Choose a card to give',
-              Markup.inlineKeyboard(buttons).oneTime().extra()
-            );
-          } else {
-            // one card
-            const favor: Card = card.otherPlayer.cards[0];
-            this.telegram
-              .sendMessage(other, 'You are giving ' + favor.description)
-              .then(() => {
-                this.doFavor(other, favor.type);
-              });
-          }
-        });
+          this.telegram.sendMessage(
+            other,
+            'Choose a card to give',
+            Markup.inlineKeyboard(buttons).oneTime().extra()
+          );
+        } else {
+          // one card
+          const favor: Card = card.otherPlayer.cards[0];
+          this.telegram
+            .sendMessage(other, 'You are giving ' + favor.description)
+            .then(() => {
+              this.doFavor(other, favor.type);
+            });
+        }
+      });
     }
   }
 
@@ -920,12 +945,404 @@ export class RoomService {
       GameUtils.addRandomPosition(player.cards, favor);
       room.card = undefined;
 
+      // send cards to other player
+      this.sendCards(code, id).then(() => {
+        this.telegram
+          .sendMessage(player.id, 'You received ' + favor.description)
+          .then(() => {
+            this.sendCardsButtons(code, false);
+          });
+      });
+    }
+  }
+
+  /**
+   * Count cat cards
+   * @param player Cards of the player
+   * @param catType Cat to count
+   * @param feral Count feral
+   */
+  private countCatCards(
+    player: Player,
+    catType: string,
+    feral: boolean = true
+  ): number {
+    let count = 1;
+    for (const card of player.cards) {
+      if (
+        card.type === catType ||
+        (feral && card.type === CardType.FERAL_CAT)
+      ) {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
+  /**
+   * Play a cat card
+   * @param id User id
+   * @param card Card played
+   */
+  private playCatCards(id: number, card: Card): void {
+    // get room
+    const code: number = this.userService.getRoom(id);
+    const room: Room = this.getRoom(code);
+
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
+    const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
+
+    const total: number = this.countCatCards(player, card.type);
+    if (total > 1) {
+      room.card = card;
+      // can play
+      const specific: number = this.countCatCards(player, card.type, false);
+      const feral: number = total - specific;
+
+      const buttons: InlineKeyboardButton[][] = [
+        [Markup.callbackButton('Cancel', BotAction.CANCEL_CARD)],
+        [Markup.callbackButton('Use 2: steal a card', BotAction.STEAL_CARD)],
+      ];
+
+      if (total > 2) {
+        buttons.push([
+          Markup.callbackButton('Use 3: ask a card', BotAction.REQUEST_CARD),
+        ]);
+      }
+      let message =
+        'What do you want to do?\nYou have ' +
+        specific +
+        ' ' +
+        card.description;
+      if (feral > 0) {
+        message += ' and ' + feral + ' ' + CardDescription.FERAL_CAT;
+        message += '\nThe first one will be used first.';
+      }
+      this.telegram.sendMessage(
+        id,
+        message,
+        Markup.inlineKeyboard(buttons).oneTime().extra()
+      );
+    } else {
+      player.cards.push(card);
+      // not enough cat cards, send cards
       this.telegram
-        .sendMessage(player.id, 'You received ' + favor.description)
+        .sendMessage(id, 'Not enough ' + card.description + ' cards')
         .then(() => {
           this.sendCardsButtons(code, false);
         });
     }
+  }
+
+  /**
+   * Cancel current operation
+   * @param id User id
+   */
+  cancelCard(id: number): void {
+    // get room
+    const code: number = this.userService.getRoom(id);
+    const room: Room = this.getRoom(code);
+
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
+    const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
+
+    // gives the user back his card
+    if (room.card) {
+      player.cards.push(room.card);
+    }
+
+    // send buttons again
+    this.sendCardsButtons(code, false);
+  }
+
+  /**
+   * Request a card
+   * @param id User id
+   */
+  requestCard(id: number): void {
+    this.stealCard(id, 2);
+  }
+
+  /**
+   * Steal a card
+   * @param id User id
+   * @param cardNumber Cards to use
+   */
+  stealCard(id: number, cardNumber: number = 1): void {
+    // get room
+    const code: number = this.userService.getRoom(id);
+    const room: Room = this.getRoom(code);
+
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
+    const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
+
+    // check card
+    if (!room.card || !(room.card instanceof CatCard)) {
+      this.sendWrongCard(id);
+      return;
+    }
+    const card: CatCard = room.card;
+
+    for (let i = 0; i < cardNumber; i++) {
+      // remove other card
+      if (!this.removeCard(player, card.type)) {
+        this.removeCard(player, CardType.FERAL_CAT);
+      }
+    }
+
+    // action
+    card.action = cardNumber === 1 ? 'steal' : 'request';
+
+    this.chooseOtherPlayer(
+      id,
+      BotAction.STEAL_FROM_PLAYER,
+      (user: number, otherUser: number) => {
+        this.chooseCardToSteal(user, otherUser);
+      }
+    );
+  }
+
+  /**
+   * Remove a card if exists
+   * @param player Player's cards
+   * @param cardType Type to remove
+   */
+  private removeCard(player: Player, cardType: string): boolean {
+    let removed = false;
+
+    const index: number = player.cards.findIndex(
+      (c: Card) => c.type === cardType
+    );
+
+    if (index !== -1) {
+      removed = true;
+      player.cards.splice(index, 1);
+    }
+
+    return removed;
+  }
+
+  /**
+   * Choose a card to steal
+   * @param id User id
+   * @param other Other user to steal
+   */
+  chooseCardToSteal(id: number, other: number): void {
+    // get room
+    const code: number = this.userService.getRoom(id);
+    const room: Room = this.getRoom(code);
+
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
+    const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
+
+    // check card
+    if (!room.card || !(room.card instanceof CatCard)) {
+      this.sendWrongCard(id);
+      return;
+    }
+    const card: CatCard = room.card;
+    card.otherPlayer = room.players.find((p: Player) => p.id === other);
+
+    // player not found, ask another player
+    if (!card.otherPlayer) {
+      this.telegram.sendMessage(id, 'Player not found').then(() => {
+        this.chooseOtherPlayer(
+          id,
+          BotAction.STEAL_FROM_PLAYER,
+          (user: number, otherUser: number) => {
+            this.chooseCardToSteal(user, otherUser);
+          }
+        );
+      });
+    } else if (card.action === 'steal') {
+      // steal
+      const buttons: InlineKeyboardButton[][] = [];
+      let row = 0;
+      for (let i = 0; i < card.otherPlayer.cards.length; i++) {
+        // create row
+        if (!buttons[row]) {
+          buttons.push([]);
+        }
+
+        // add button
+        buttons[row].push(
+          Markup.callbackButton(String(i + 1), BotAction.CARD_TO_STEAL + i)
+        );
+
+        // max 4 buttons per row
+        if (buttons[row].length > 3) {
+          row++;
+        }
+      }
+
+      this.notifyRoom(
+        code,
+        'is stealing from @' + this.userService.getUsername(other),
+        id
+      ).then(() => {
+        this.telegram.sendMessage(
+          id,
+          'Choose a card to steal',
+          Markup.inlineKeyboard(buttons).oneTime().extra()
+        );
+      });
+    } else {
+      // request
+      const buttons: InlineKeyboardButton[][] = [];
+      for (const c of room.mode.cardsTypes) {
+        // add button
+        buttons.push([
+          Markup.callbackButton(
+            c.description,
+            BotAction.CARD_TO_STEAL + c.type
+          ),
+        ]);
+      }
+
+      this.notifyRoom(
+        code,
+        'is asking @' + this.userService.getUsername(other) + ' for a card',
+        id
+      ).then(() => {
+        this.telegram.sendMessage(
+          id,
+          'Choose a card to request',
+          Markup.inlineKeyboard(buttons).oneTime().extra()
+        );
+      });
+    }
+  }
+
+  /**
+   * Steal a card
+   * @param id User id
+   * @param data What to steal
+   */
+  doSteal(id: number, data: string): void {
+    // get room
+    const code: number = this.userService.getRoom(id);
+    const room: Room = this.getRoom(code);
+
+    // game ended
+    if (!room) {
+      this.sendStartSuggestion(id);
+      return;
+    }
+
+    const player: Player = room.players[room.currentPlayer];
+
+    // check user playing
+    if (player.id !== id) {
+      this.sendWaitYourTurn(id);
+      return;
+    }
+
+    // check card
+    if (!room.card || !(room.card instanceof CatCard)) {
+      this.sendWrongCard(id);
+      return;
+    }
+    const card: CatCard = room.card;
+
+    if (card.action === 'steal') {
+      // steal
+      const index: number = Number(data);
+
+      const stolen: Card = card.otherPlayer.cards.splice(index, 1)[0];
+      GameUtils.addRandomPosition(player.cards, stolen);
+
+      this.telegram
+        .sendMessage(
+          card.otherPlayer.id,
+          stolen.description + ' was stolen from you'
+        )
+        .then(() => {
+          this.sendCards(code, card.otherPlayer.id).then(() => {
+            this.telegram
+              .sendMessage(id, 'You stole ' + stolen.description)
+              .then(() => {
+                this.sendCardsButtons(code, false);
+              });
+          });
+        });
+    } else {
+      // request
+      const index: number = card.otherPlayer.cards.findIndex(
+        (c: Card) => c.type === data
+      );
+
+      let message: string;
+      if (index === -1) {
+        message =
+          'could not steal ' +
+          CardFactory.descriptions[data] +
+          ' from @' +
+          this.userService.getUsername(card.otherPlayer.id);
+      } else {
+        // other player has the card
+        const stolen: Card = card.otherPlayer.cards.splice(index, 1)[0];
+        GameUtils.addRandomPosition(player.cards, stolen);
+
+        message =
+          'stole ' +
+          stolen.description +
+          ' from @' +
+          this.userService.getUsername(card.otherPlayer.id);
+      }
+
+      this.notifyRoom(code, message, id).then(() => {
+        this.sendCards(code, card.otherPlayer.id).then(() => {
+          this.sendCardsButtons(code, false);
+        });
+      });
+    }
+
+    room.card = undefined;
   }
 
   /**
@@ -950,10 +1367,10 @@ export class RoomService {
       end = alive < 2;
     }
 
-    // TODO ask to start again
+    // end game and destroy room
     if (end) {
       this.notifyRoom(code, 'won the game 👑👑🐈', winner);
-      room.running = false;
+      this.stopGame(winner);
     }
 
     return end;
@@ -1011,10 +1428,12 @@ export class RoomService {
 
     if (room) {
       // notify users
-      this.notifyRoom(code, 'Game ended by host');
-
-      // destroy room
-      this.destroyRoom(code);
+      this.notifyRoom(code, 'Game ended. Send /start to play a new game').then(
+        () => {
+          // destroy room
+          this.destroyRoom(code);
+        }
+      );
     }
   }
 
@@ -1079,14 +1498,17 @@ export class RoomService {
           }
         }
 
-        // if favor and player disconnected
         if (
-          room.card instanceof FavorCard &&
+          room.card &&
+          room.card instanceof OtherPlayerCard &&
           room.card.otherPlayer &&
           room.card.otherPlayer.id === id
         ) {
-          // give random card
-          this.doFavor(player.id, GameUtils.randomCard(player.cards).type);
+          // if favor and player disconnected
+          if (room.card instanceof FavorCard) {
+            // give random card
+            this.doFavor(player.id, GameUtils.randomCard(player.cards).type);
+          }
         }
 
         // notify players

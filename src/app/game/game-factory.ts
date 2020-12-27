@@ -4,15 +4,20 @@ import { InlineKeyboardButton } from 'telegraf/typings/markup';
 import {
   AlterFutureCard,
   AttackCard,
+  BeardCatCard,
   Card,
-  CatCard,
+  CattermelonCard,
   DefuseCard,
   DrawBottomCard,
   ExplodingKittenCard,
   FavorCard,
+  FeralCatCard,
+  HairyPotatoCatCard,
+  RainbowCatCard,
   SeeFutureCard,
   ShuffleCard,
   SkipCard,
+  TacocatCard,
 } from './card';
 
 /**
@@ -28,6 +33,11 @@ export abstract class Mode {
    * Allowed players
    */
   maxPlayers: number;
+
+  /**
+   * Cards in the pack
+   */
+  cardsTypes: Card[];
 
   /**
    * Get mode cards
@@ -65,9 +75,24 @@ export abstract class Mode {
  * Party mode
  */
 class PartyMode extends Mode {
-  description = 'Party pack, up to 10 players';
+  description = 'Party pack';
 
   maxPlayers = 10;
+
+  cardsTypes: Card[] = [
+    new DefuseCard(),
+    new AttackCard(),
+    new SkipCard(),
+    new SeeFutureCard(),
+    new DrawBottomCard(),
+    new FavorCard(),
+    new FeralCatCard(),
+    new TacocatCard(),
+    new CattermelonCard(),
+    new HairyPotatoCatCard(),
+    new BeardCatCard(),
+    new RainbowCatCard(),
+  ];
 
   getCards(players: number): Card[] {
     const cards: Card[] = [];
@@ -80,7 +105,12 @@ class PartyMode extends Mode {
       this.pushCards(cards, new ShuffleCard(), 2);
       this.pushCards(cards, new DrawBottomCard(), 3);
       this.pushCards(cards, new FavorCard(), 2);
-      this.pushCards(cards, new CatCard(), 5);
+      this.pushCards(cards, new FeralCatCard(), 2);
+      this.pushCards(cards, new TacocatCard(), 3);
+      this.pushCards(cards, new CattermelonCard(), 3);
+      this.pushCards(cards, new HairyPotatoCatCard(), 3);
+      this.pushCards(cards, new BeardCatCard(), 3);
+      this.pushCards(cards, new RainbowCatCard(), 3);
     } else if (players < 8) {
       this.pushCards(cards, new AttackCard(), 7);
       this.pushCards(cards, new SkipCard(), 6);
@@ -89,7 +119,12 @@ class PartyMode extends Mode {
       this.pushCards(cards, new ShuffleCard(), 4);
       this.pushCards(cards, new DrawBottomCard(), 4);
       this.pushCards(cards, new FavorCard(), 4);
-      this.pushCards(cards, new CatCard(), 10);
+      this.pushCards(cards, new FeralCatCard(), 4);
+      this.pushCards(cards, new TacocatCard(), 4);
+      this.pushCards(cards, new CattermelonCard(), 4);
+      this.pushCards(cards, new HairyPotatoCatCard(), 4);
+      this.pushCards(cards, new BeardCatCard(), 4);
+      this.pushCards(cards, new RainbowCatCard(), 4);
     } else {
       this.pushCards(cards, new AttackCard(), 11);
       this.pushCards(cards, new SkipCard(), 10);
@@ -98,7 +133,12 @@ class PartyMode extends Mode {
       this.pushCards(cards, new ShuffleCard(), 6);
       this.pushCards(cards, new DrawBottomCard(), 7);
       this.pushCards(cards, new FavorCard(), 6);
-      this.pushCards(cards, new CatCard(), 15);
+      this.pushCards(cards, new FeralCatCard(), 6);
+      this.pushCards(cards, new TacocatCard(), 7);
+      this.pushCards(cards, new CattermelonCard(), 7);
+      this.pushCards(cards, new HairyPotatoCatCard(), 7);
+      this.pushCards(cards, new BeardCatCard(), 7);
+      this.pushCards(cards, new RainbowCatCard(), 7);
     }
 
     return cards;
@@ -130,14 +170,18 @@ export class GameFactory {
   /**
    * Gets all available modes as buttons
    */
-  static getModesButtons(): InlineKeyboardButton[] {
-    const response: InlineKeyboardButton[] = [];
+  static getModesButtons(): InlineKeyboardButton[][] {
+    const response: InlineKeyboardButton[][] = [];
 
     // create a list of modes
     for (const mode of Object.keys(GameFactory.modes)) {
-      response.push(
-        Markup.callbackButton(GameFactory.modes[mode].description, mode)
-      );
+      const m: Mode = GameFactory.modes[mode];
+      response.push([
+        Markup.callbackButton(
+          m.description + ', up to ' + m.maxPlayers + ' players',
+          mode
+        ),
+      ]);
     }
 
     return response;

@@ -11,7 +11,11 @@ export enum BotAction {
   ALTER_THE_FUTURE_ACTION = 'alter_future_action',
   ALTER_THE_FUTURE_OK = 'alter_future_ok',
   ALTER_THE_FUTURE_RESET = 'alter_future_reset',
+  CANCEL_CARD = 'cancel_card',
+  STEAL_CARD = 'steal_card',
+  REQUEST_CARD = 'request_card',
   STEAL_FROM_PLAYER = 'steal_from',
+  CARD_TO_STEAL = 'card_to_steal',
   FAVOR_FROM_PLAYER = 'favor_from',
   DO_FAVOR = 'do_favor',
 }

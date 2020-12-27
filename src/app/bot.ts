@@ -2,7 +2,7 @@ import { Markup, Telegraf } from 'telegraf';
 import { TelegrafContext } from 'telegraf/typings/context';
 
 import { BotAction } from './bot-action.enum';
-import { CardType, DefuseCard, ExplodingKittenCard } from './game/card';
+import { CardDescription, CardFactory, CardType } from './game/card';
 import { GameFactory } from './game/game-factory';
 import { Room } from './room/room';
 import { RoomService } from './room/room-service';
@@ -277,6 +277,18 @@ export class Bot {
 
         // alter future
         this.roomService.alterFuture(ctx.from.id, data);
+      } else if (ctx.callbackQuery.data.startsWith(BotAction.STEAL_CARD)) {
+        ctx.editMessageText('You chose to steal a card');
+
+        this.roomService.stealCard(ctx.from.id);
+      } else if (ctx.callbackQuery.data.startsWith(BotAction.CANCEL_CARD)) {
+        ctx.editMessageText('You canceled the operation');
+
+        this.roomService.cancelCard(ctx.from.id);
+      } else if (ctx.callbackQuery.data.startsWith(BotAction.REQUEST_CARD)) {
+        ctx.editMessageText('You chose to request a card');
+
+        this.roomService.requestCard(ctx.from.id);
       } else if (
         ctx.callbackQuery.data.startsWith(BotAction.STEAL_FROM_PLAYER)
       ) {
@@ -287,7 +299,16 @@ export class Bot {
           'Steal from: ' + this.userService.getUsername(player)
         );
 
-        // TODO steal
+        // player
+        this.roomService.chooseCardToSteal(ctx.from.id, player);
+      } else if (ctx.callbackQuery.data.startsWith(BotAction.CARD_TO_STEAL)) {
+        const data: string = ctx.callbackQuery.data.replace(
+          BotAction.CARD_TO_STEAL,
+          ''
+        );
+        ctx.editMessageText('Card chosen');
+
+        this.roomService.doSteal(ctx.from.id, data);
       } else if (
         ctx.callbackQuery.data.startsWith(BotAction.FAVOR_FROM_PLAYER)
       ) {
@@ -336,7 +357,9 @@ export class Bot {
      */
     this.bot.action(Object.values(CardType), (ctx) => {
       this.registerUser(ctx);
-      ctx.editMessageText('You played: ' + ctx.callbackQuery.data);
+      ctx.editMessageText(
+        'You played: ' + CardFactory.descriptions[ctx.callbackQuery.data]
+      );
 
       this.roomService.playCard(ctx.from.id, ctx.callbackQuery.data);
     });
@@ -346,7 +369,7 @@ export class Bot {
      */
     this.bot.action(BotAction.DEFUSE_KITTEN, (ctx) => {
       this.registerUser(ctx);
-      ctx.editMessageText('You played: ' + new DefuseCard().description);
+      ctx.editMessageText('You played: ' + CardDescription.DEFUSE);
 
       this.roomService.playCard(ctx.from.id, CardType.DEFUSE);
     });
@@ -356,9 +379,7 @@ export class Bot {
      */
     this.bot.action(BotAction.EXPLODE, (ctx) => {
       this.registerUser(ctx);
-      ctx.editMessageText(
-        'You played: ' + new ExplodingKittenCard().description
-      );
+      ctx.editMessageText('You played: ' + CardDescription.EXPLODING_KITTEN);
 
       this.roomService.playCard(ctx.from.id, CardType.EXPLODING_KITTEN);
     });
