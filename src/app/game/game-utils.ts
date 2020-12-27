@@ -1,3 +1,5 @@
+import { Card } from './card';
+
 /**
  * Game utils methods
  */
@@ -24,5 +26,34 @@ export class GameUtils {
     }
 
     return array;
+  }
+
+  /**
+   * Get a random number between 0 and max
+   * @param max Max number, not included
+   */
+  private static getRandomNumber(max: number): number {
+    return Math.floor(Math.random() * Math.floor(max));
+  }
+
+  /**
+   * Get a random card
+   * @param cards Cards
+   */
+  static randomCard(cards: Card[]): Card {
+    const randomIndex: number = this.getRandomNumber(cards.length);
+
+    return cards[randomIndex];
+  }
+
+  /**
+   * Add a card in a random position
+   * @param cards Array
+   * @param card Card to add
+   */
+  static addRandomPosition(cards: Card[], card: Card): void {
+    const randomIndex: number = this.getRandomNumber(cards.length);
+
+    cards.splice(randomIndex, 0, card);
   }
 }

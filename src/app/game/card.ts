@@ -1,3 +1,5 @@
+import { Player } from './../room/player';
+
 /**
  * Define a card
  */
@@ -89,7 +91,7 @@ export class FavorCard implements Card {
   /**
    * Player who will do the favor
    */
-  otherPlayer: number;
+  otherPlayer: Player;
 }
 
 export class CatCard implements Card {
@@ -99,5 +101,5 @@ export class CatCard implements Card {
   /**
    * Player to steal
    */
-  otherPlayer: number;
+  otherPlayer: Player;
 }

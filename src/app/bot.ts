@@ -273,22 +273,40 @@ export class Bot {
           BotAction.ALTER_THE_FUTURE_ACTION,
           ''
         );
-        ctx.editMessageText('Received');
+        ctx.editMessageText(ctx.callbackQuery.message.text);
 
         // alter future
         this.roomService.alterFuture(ctx.from.id, data);
       } else if (
         ctx.callbackQuery.data.startsWith(BotAction.STEAL_FROM_PLAYER)
       ) {
-        ctx.editMessageText('Player selected');
+        const player: number = Number(
+          ctx.callbackQuery.data.replace(BotAction.STEAL_FROM_PLAYER, '')
+        );
+        ctx.editMessageText(
+          'Steal from: ' + this.userService.getUsername(player)
+        );
 
         // TODO steal
       } else if (
         ctx.callbackQuery.data.startsWith(BotAction.FAVOR_FROM_PLAYER)
       ) {
-        ctx.editMessageText('Player selected');
+        const player: number = Number(
+          ctx.callbackQuery.data.replace(BotAction.FAVOR_FROM_PLAYER, '')
+        );
+        ctx.editMessageText(
+          'Favor from: ' + this.userService.getUsername(player)
+        );
 
-        // TODO favor
+        this.roomService.askFavor(ctx.from.id, player);
+      } else if (ctx.callbackQuery.data.startsWith(BotAction.DO_FAVOR)) {
+        const data: string = ctx.callbackQuery.data.replace(
+          BotAction.DO_FAVOR,
+          ''
+        );
+        ctx.editMessageText('You are giving: ' + data);
+
+        this.roomService.doFavor(ctx.from.id, data);
       } else {
         // unknown requests
         ctx.reply(

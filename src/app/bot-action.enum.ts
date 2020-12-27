@@ -13,4 +13,5 @@ export enum BotAction {
   ALTER_THE_FUTURE_RESET = 'alter_future_reset',
   STEAL_FROM_PLAYER = 'steal_from',
   FAVOR_FROM_PLAYER = 'favor_from',
+  DO_FAVOR = 'do_favor',
 }
