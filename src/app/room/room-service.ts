@@ -449,12 +449,16 @@ export class RoomService {
         this.notifyRoom(code, 'played an ' + card.description, id).then(() => {
           const attackCard: AttackCard = card as AttackCard;
 
-          this.nextPlayer(code, attackCard.turns);
+          this.sendCards(code, id).then(() => {
+            this.nextPlayer(code, attackCard.turns);
+          });
         });
         break;
       case CardType.SKIP:
         this.notifyRoom(code, 'played ' + card.description, id).then(() => {
-          this.nextPlayer(code);
+          this.sendCards(code, id).then(() => {
+            this.nextPlayer(code);
+          });
         });
         break;
       case CardType.SEE_FUTURE:
