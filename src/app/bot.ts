@@ -99,9 +99,7 @@ export class Bot {
     // stop command
     this.bot.command('stop', (ctx) => {
       this.registerUser(ctx);
-      if (this.roomService.exitGame(ctx.from.id)) {
-        ctx.reply('Disconnected');
-      } else {
+      if (!this.roomService.exitGame(ctx.from.id)) {
         ctx.reply('You are not playing');
       }
     });

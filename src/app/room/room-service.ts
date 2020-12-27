@@ -1462,7 +1462,6 @@ export class RoomService {
 
     // reset user room
     const code = this.userService.getRoom(id);
-    this.userService.setRoom(id);
 
     // remove user from room
     const room = this.getRoom(code);
@@ -1487,7 +1486,7 @@ export class RoomService {
           '] players.';
 
         // remove exploding kitten
-        if (room.deck.length > 0) {
+        if (room.deck && room.deck.length > 0) {
           const explodingIndex: number = room.deck.findIndex(
             (c: Card) => c instanceof ExplodingKittenCard
           );
@@ -1513,6 +1512,10 @@ export class RoomService {
 
         // notify players
         this.notifyRoom(code, message, id).then(() => {
+          // disconnect player
+          this.userService.setRoom(id);
+          this.telegram.sendMessage(id, 'Disconnected');
+
           // if game is not ended
           if (!this.checkEndGame(code)) {
             // next player if he was the current player
