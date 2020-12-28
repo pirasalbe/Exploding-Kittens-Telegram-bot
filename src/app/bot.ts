@@ -121,6 +121,7 @@ export class Bot {
       username = ctx.from.username;
     } else {
       username += ctx.from.first_name ? ctx.from.first_name : '';
+      username += ctx.from.first_name && ctx.from.last_name ? ' ' : '';
       username += ctx.from.last_name ? ctx.from.last_name : '';
     }
 
