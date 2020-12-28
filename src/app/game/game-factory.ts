@@ -84,6 +84,7 @@ class PartyMode extends Mode {
     new AttackCard(),
     new SkipCard(),
     new SeeFutureCard(),
+    new AlterFutureCard(),
     new DrawBottomCard(),
     new FavorCard(),
     new FeralCatCard(),
