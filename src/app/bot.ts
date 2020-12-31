@@ -116,10 +116,8 @@ export class Bot {
    * @param ctx Telegram context
    */
   registerUser(ctx: TelegrafContext): void {
-    let username = '';
-    if (username) {
-      username = ctx.from.username;
-    } else {
+    let username = ctx.from.username;
+    if (!username) {
       username += ctx.from.first_name ? ctx.from.first_name : '';
       username += ctx.from.first_name && ctx.from.last_name ? ' ' : '';
       username += ctx.from.last_name ? ctx.from.last_name : '';
@@ -332,7 +330,9 @@ export class Bot {
           BotAction.DO_FAVOR,
           ''
         );
-        ctx.editMessageText('You are giving: ' + data);
+        ctx.editMessageText(
+          'You are giving: ' + CardFactory.descriptions[data]
+        );
 
         this.roomService.doFavor(ctx.from.id, data);
       } else {
