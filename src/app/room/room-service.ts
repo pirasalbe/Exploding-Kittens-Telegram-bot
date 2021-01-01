@@ -698,10 +698,8 @@ export class RoomService {
       }
 
       // send buttons
-      this.notifyRoom(code, 'Altered the future', id).then(() => {
-        this.sendCardsButtons(code);
-        room.card = undefined;
-      });
+      this.sendCardsButtons(code);
+      room.card = undefined;
     } else if (cards.length === count - 1) {
       // have all the cards, ask confirmation
       // get last card
