@@ -116,8 +116,10 @@ export class Bot {
    * @param ctx Telegram context
    */
   registerUser(ctx: TelegrafContext): void {
-    let username = ctx.from.username;
-    if (!username) {
+    let username = '';
+    if (ctx.from.username) {
+      username += '@' + ctx.from.username;
+    } else {
       username += ctx.from.first_name ? ctx.from.first_name : '';
       username += ctx.from.first_name && ctx.from.last_name ? ' ' : '';
       username += ctx.from.last_name ? ctx.from.last_name : '';

@@ -871,7 +871,7 @@ export class RoomService {
     } else {
       this.notifyRoom(
         code,
-        'asked a favor to @' + this.userService.getUsername(other),
+        'asked a favor to ' + this.userService.getUsername(other),
         id
       ).then(() => {
         if (card.otherPlayer.cards.length > 1) {
@@ -1222,7 +1222,7 @@ export class RoomService {
 
       this.notifyRoom(
         code,
-        'is stealing from @' + this.userService.getUsername(other),
+        'is stealing from ' + this.userService.getUsername(other),
         id
       ).then(() => {
         this.telegram.sendMessage(
@@ -1246,7 +1246,7 @@ export class RoomService {
 
       this.notifyRoom(
         code,
-        'is asking @' + this.userService.getUsername(other) + ' for a card',
+        'is asking ' + this.userService.getUsername(other) + ' for a card',
         id
       ).then(() => {
         this.telegram.sendMessage(
@@ -1321,7 +1321,7 @@ export class RoomService {
         message =
           'could not steal ' +
           CardFactory.descriptions[data] +
-          ' from @' +
+          ' from ' +
           this.userService.getUsername(card.otherPlayer.id);
       } else {
         // other player has the card
@@ -1331,7 +1331,7 @@ export class RoomService {
         message =
           'stole ' +
           stolen.description +
-          ' from @' +
+          ' from ' +
           this.userService.getUsername(card.otherPlayer.id);
       }
 
@@ -1547,7 +1547,7 @@ export class RoomService {
 
     // add username
     if (userId !== -1) {
-      message = '@' + this.userService.getUsername(userId) + ' ' + message;
+      message = this.userService.getUsername(userId) + ' ' + message;
     }
 
     const result: Promise<Message>[] = [];
