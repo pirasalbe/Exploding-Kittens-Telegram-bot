@@ -1442,7 +1442,8 @@ export class RoomService {
     let message = 'turn.\n';
     message += 'Player has ' + this.getPlayerCardsMessage(player) + '.\n';
     message += room.turns + ' turn' + (room.turns > 1 ? 's' : '') + ' left.\n';
-    message += room.deck.length + ' cards left in the deck';
+    const deck: number = room.deck.length;
+    message += deck + ' card' + (deck > 1 ? 's' : '') + ' left in the deck.';
 
     this.notifyRoom(room.id, message, player.id).then(() => {
       // send cards button
