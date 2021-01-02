@@ -1094,8 +1094,8 @@ export class RoomService {
 
     for (let i = 0; i < cardNumber; i++) {
       // remove other card
-      if (!this.removeCard(player, card.type)) {
-        this.removeCard(player, CardType.FERAL_CAT);
+      if (!this.removeCard(card, player, card.type)) {
+        this.removeCard(card, player, CardType.FERAL_CAT);
       }
     }
 
@@ -1113,10 +1113,15 @@ export class RoomService {
 
   /**
    * Remove a card if exists
+   * @param roomCard Room card
    * @param player Player's cards
    * @param cardType Type to remove
    */
-  private removeCard(player: Player, cardType: string): boolean {
+  private removeCard(
+    roomCard: CatCard,
+    player: Player,
+    cardType: string
+  ): boolean {
     let removed = false;
 
     const index: number = player.cards.findIndex(
@@ -1125,7 +1130,8 @@ export class RoomService {
 
     if (index !== -1) {
       removed = true;
-      player.cards.splice(index, 1);
+      const card: Card = player.cards.splice(index, 1)[0];
+      roomCard.otherCards.push(card);
     }
 
     return removed;
@@ -1197,7 +1203,9 @@ export class RoomService {
 
       this.notifyRoom(
         code,
-        'is stealing from ' + this.userService.getUsername(other),
+        this.catCardUsedMessage(card) +
+          '\nPlayer is stealing from ' +
+          this.userService.getUsername(other),
         id
       ).then(() => {
         this.telegram.sendMessage(
@@ -1221,7 +1229,10 @@ export class RoomService {
 
       this.notifyRoom(
         code,
-        'is asking ' + this.userService.getUsername(other) + ' for a card',
+        this.catCardUsedMessage(card) +
+          '\nPlayer is asking ' +
+          this.userService.getUsername(other) +
+          ' for a card',
         id
       ).then(() => {
         this.telegram.sendMessage(
@@ -1231,6 +1242,35 @@ export class RoomService {
         );
       });
     }
+  }
+
+  /**
+   * Create a message with cards used to steal/request
+   * @param card Cat card used
+   */
+  private catCardUsedMessage(card: CatCard): string {
+    let message = 'played ';
+
+    // main card count
+    let main = 1;
+    // feral cat count
+    let feral = 0;
+    for (const c of card.otherCards) {
+      if (card.type === c.type) {
+        main++;
+      } else {
+        feral++;
+      }
+    }
+
+    // add cards to message
+    message += main + ' ' + card.description;
+    if (feral > 0) {
+      message += ' and ' + feral + ' ' + CardDescription.FERAL_CAT;
+    }
+    message += '.';
+
+    return message;
   }
 
   /**

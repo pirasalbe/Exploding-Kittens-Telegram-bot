@@ -150,6 +150,11 @@ export abstract class CatCard extends OtherPlayerCard {
   description: CardDescription;
 
   /**
+   * Other cards used
+   */
+  otherCards: Card[] = [];
+
+  /**
    * Action
    */
   action: 'steal' | 'request';
