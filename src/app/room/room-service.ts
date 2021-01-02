@@ -169,7 +169,7 @@ export class RoomService {
       // send card
       this.sendCards(code).then(() => {
         // start turn
-        this.sendCardsButtons(code);
+        this.sendNextPlayer(room);
       });
     }
 
@@ -214,43 +214,22 @@ export class RoomService {
   /**
    * Send cards to let a player play
    * @param code Room code
-   * @param notify Notify turn
    */
-  private sendCardsButtons(code: number, notify: boolean = true): void {
+  private sendCardsButtons(code: number): void {
     // get room
     const room: Room = this.getRoom(code);
 
     // get active player
     const player: Player = room.players[room.currentPlayer];
 
-    let promise: Promise<Message[]> = Promise.all([]);
-    if (notify) {
-      // @name turn. Player has n cards. m turns left.
-      promise = this.notifyRoom(
-        code,
-        'turn. Player has ' +
-          player.cards.length +
-          ' card' +
-          (player.cards.length === 1 ? '' : 's') +
-          '. ' +
-          room.turns +
-          ' turn' +
-          (room.turns > 1 ? 's' : '') +
-          ' left.',
-        player.id
-      );
-    }
-
     // send cards info
     const buttons: InlineKeyboardButton[][] = this.getCardsButtons(player);
 
-    promise.then(() => {
-      this.telegram.sendMessage(
-        player.id,
-        'Choose a card',
-        Markup.inlineKeyboard(buttons).oneTime().extra()
-      );
-    });
+    this.telegram.sendMessage(
+      player.id,
+      'Choose a card',
+      Markup.inlineKeyboard(buttons).oneTime().extra()
+    );
   }
 
   /**
@@ -315,7 +294,7 @@ export class RoomService {
     }
 
     const card: Card = top ? room.deck.pop() : room.deck.splice(0, 1)[0];
-    player.cards.push(card);
+    GameUtils.addRandomPosition(player.cards, card);
 
     this.telegram
       .sendMessage(player.id, card.description, Extra.markdown().markup(''))
@@ -341,14 +320,10 @@ export class RoomService {
             }
           });
         } else {
-          // add card to player's deck
-          this.sendCards(code, id).then(() => {
-            // number of cards
-            this.notifyRoom(
-              code,
-              'drew a card. ' + room.deck.length + ' cards left in the deck',
-              id
-            ).then(() => {
+          // number of cards
+          this.notifyRoom(code, 'drew a card', id).then(() => {
+            // add card to player's deck
+            this.sendCards(code, id).then(() => {
               this.nextPlayer(code);
             });
           });
@@ -444,10 +419,10 @@ export class RoomService {
           });
         } else {
           // else send cards buttons
-          player.cards.push(card);
+          GameUtils.addRandomPosition(player.cards, card);
           // tslint:disable-next-line:quotemark
           this.telegram.sendMessage(id, "You can't use this card").then(() => {
-            this.sendCardsButtons(code, false);
+            this.sendCardsButtons(code);
           });
         }
         break;
@@ -792,16 +767,18 @@ export class RoomService {
 
     // players button
     let other: number;
-    const buttons: InlineKeyboardButton[] = [];
+    const buttons: InlineKeyboardButton[][] = [];
     for (const p of room.players) {
       if (p.id !== id && p.alive && p.cards.length > 0) {
         // button action
-        buttons.push(
+        buttons.push([
           Markup.callbackButton(
-            this.userService.getUsername(p.id),
+            this.userService.getUsername(p.id) +
+              '. ' +
+              this.getPlayerCardsMessage(player),
             action + p.id
-          )
-        );
+          ),
+        ]);
         other = p.id;
       }
     }
@@ -948,7 +925,7 @@ export class RoomService {
         this.telegram
           .sendMessage(player.id, 'You received ' + favor.description)
           .then(() => {
-            this.sendCardsButtons(code, false);
+            this.sendCardsButtons(code);
           });
       });
     }
@@ -1034,12 +1011,12 @@ export class RoomService {
         Markup.inlineKeyboard(buttons).oneTime().extra()
       );
     } else {
-      player.cards.push(card);
+      GameUtils.addRandomPosition(player.cards, card);
       // not enough cat cards, send cards
       this.telegram
         .sendMessage(id, 'Not enough ' + card.description + ' cards')
         .then(() => {
-          this.sendCardsButtons(code, false);
+          this.sendCardsButtons(code);
         });
     }
   }
@@ -1069,11 +1046,11 @@ export class RoomService {
 
     // gives the user back his card
     if (room.card) {
-      player.cards.push(room.card);
+      GameUtils.addRandomPosition(player.cards, room.card);
     }
 
     // send buttons again
-    this.sendCardsButtons(code, false);
+    this.sendCardsButtons(code);
   }
 
   /**
@@ -1304,7 +1281,7 @@ export class RoomService {
             this.telegram
               .sendMessage(id, 'You stole ' + stolen.description)
               .then(() => {
-                this.sendCardsButtons(code, false);
+                this.sendCardsButtons(code);
               });
           });
         });
@@ -1335,7 +1312,7 @@ export class RoomService {
 
       this.notifyRoom(code, message, id).then(() => {
         this.sendCards(code, card.otherPlayer.id).then(() => {
-          this.sendCardsButtons(code, false);
+          this.sendCardsButtons(code);
         });
       });
     }
@@ -1411,8 +1388,36 @@ export class RoomService {
       room.turns += turns;
     }
 
-    // send cards button
-    this.sendCardsButtons(code);
+    // send message
+    this.sendNextPlayer(room);
+  }
+
+  /**
+   * Sends next player infos
+   * @param room Room to send
+   */
+  private sendNextPlayer(room: Room): void {
+    // @name turn. Player has n cards. m turns left. k cards left in the deck
+    const player: Player = room.players[room.currentPlayer];
+    let message = 'turn.\n';
+    message += 'Player has ' + this.getPlayerCardsMessage(player) + '.\n';
+    message += room.turns + ' turn' + (room.turns > 1 ? 's' : '') + ' left.\n';
+    message += room.deck.length + ' cards left in the deck';
+
+    this.notifyRoom(room.id, message, player.id).then(() => {
+      // send cards button
+      this.sendCardsButtons(room.id);
+    });
+  }
+
+  /**
+   * Get a message with the number of cards
+   * @param player Player to count
+   */
+  private getPlayerCardsMessage(player: Player): string {
+    return (
+      player.cards.length + ' card' + (player.cards.length === 1 ? '' : 's')
+    );
   }
 
   /**
