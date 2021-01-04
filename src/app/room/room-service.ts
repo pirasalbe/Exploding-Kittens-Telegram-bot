@@ -1183,25 +1183,6 @@ export class RoomService {
       });
     } else if (card.action === 'steal') {
       // steal
-      const buttons: InlineKeyboardButton[][] = [];
-      let row = 0;
-      for (let i = 0; i < card.otherPlayer.cards.length; i++) {
-        // create row
-        if (!buttons[row]) {
-          buttons.push([]);
-        }
-
-        // add button
-        buttons[row].push(
-          Markup.callbackButton(String(i + 1), BotAction.CARD_TO_STEAL + i)
-        );
-
-        // max 4 buttons per row
-        if (buttons[row].length > 3) {
-          row++;
-        }
-      }
-
       this.notifyRoom(
         code,
         this.catCardUsedMessage(card) +
@@ -1209,11 +1190,37 @@ export class RoomService {
           this.userService.getUsername(other),
         id
       ).then(() => {
-        this.telegram.sendMessage(
-          id,
-          'Choose a card to steal',
-          Markup.inlineKeyboard(buttons).oneTime().extra()
-        );
+        // based on other player cards
+        if (card.otherPlayer.cards.length > 1) {
+          const buttons: InlineKeyboardButton[][] = [];
+          let row = 0;
+          for (let i = 0; i < card.otherPlayer.cards.length; i++) {
+            // create row
+            if (!buttons[row]) {
+              buttons.push([]);
+            }
+
+            // add button
+            buttons[row].push(
+              Markup.callbackButton(String(i + 1), BotAction.CARD_TO_STEAL + i)
+            );
+
+            // max 4 buttons per row
+            if (buttons[row].length > 3) {
+              row++;
+            }
+          }
+
+          // choose card
+          this.telegram.sendMessage(
+            id,
+            'Choose a card to steal',
+            Markup.inlineKeyboard(buttons).oneTime().extra()
+          );
+        } else {
+          // one card
+          this.doSteal(id, '0');
+        }
       });
     } else {
       // request
@@ -1250,6 +1257,7 @@ export class RoomService {
    * @param card Cat card used
    */
   private catCardUsedMessage(card: CatCard): string {
+    // TODO wrong count
     let message = 'played ';
 
     // main card count
