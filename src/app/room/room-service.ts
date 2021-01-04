@@ -1132,8 +1132,12 @@ export class RoomService {
     if (index !== -1) {
       removed = true;
       const card: Card = player.cards.splice(index, 1)[0];
-      roomCard.otherCards.push(card);
-      console.log(player, roomCard);
+
+      if (roomCard.type === card.type) {
+        roomCard.otherCards++;
+      } else {
+        roomCard.otherFeralCards++;
+      }
     }
 
     return removed;
@@ -1258,28 +1262,12 @@ export class RoomService {
    * @param card Cat card used
    */
   private catCardUsedMessage(card: CatCard): string {
-    // TODO wrong count
     let message = 'played ';
-
-    // main card count
-    let main = 1;
-    // feral cat count
-    let feral = 0;
-    console.log('Count');
-    for (const c of card.otherCards) {
-      console.log(c);
-      if (card.type === c.type) {
-        main++;
-      } else {
-        feral++;
-      }
-    }
-    console.log('End', card, main, feral);
-
     // add cards to message
-    message += main + ' ' + card.description;
-    if (feral > 0) {
-      message += ' and ' + feral + ' ' + CardDescription.FERAL_CAT;
+    message += card.otherCards + 1 + ' ' + card.description;
+    if (card.otherFeralCards > 0) {
+      message +=
+        ' and ' + card.otherFeralCards + ' ' + CardDescription.FERAL_CAT;
     }
     message += '.';
 

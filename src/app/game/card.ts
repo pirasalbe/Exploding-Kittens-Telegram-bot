@@ -152,7 +152,12 @@ export abstract class CatCard extends OtherPlayerCard {
   /**
    * Other cards used
    */
-  otherCards: Card[] = [];
+  otherCards = 0;
+
+  /**
+   * Other feral used
+   */
+  otherFeralCards = 0;
 
   /**
    * Action
