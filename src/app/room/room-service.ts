@@ -110,10 +110,6 @@ export class RoomService {
 
     // game ended
     if (currentRoom) {
-      this.telegram.sendMessage(
-        id,
-        'You are already playing. Send /stop to disconnect.'
-      );
       return;
     }
 
