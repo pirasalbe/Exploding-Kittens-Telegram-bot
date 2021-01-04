@@ -104,6 +104,19 @@ export class RoomService {
    * @param host Define the host
    */
   joinGame(id: number, code: number, host: boolean = false): Room {
+    // get room
+    const current: number = this.userService.getRoom(id);
+    const currentRoom: Room = this.getRoom(current);
+
+    // game ended
+    if (currentRoom) {
+      this.telegram.sendMessage(
+        id,
+        'You are already playing. Send /stop to disconnect.'
+      );
+      return;
+    }
+
     let room: Room = this.getRoom(code);
     if (room && !room.running && room.players.length < room.mode.maxPlayers) {
       // notify players
