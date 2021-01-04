@@ -1133,7 +1133,7 @@ export class RoomService {
       removed = true;
       const card: Card = player.cards.splice(index, 1)[0];
       roomCard.otherCards.push(card);
-      console.log(roomCard);
+      console.log(player, roomCard);
     }
 
     return removed;
