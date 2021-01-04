@@ -135,9 +135,11 @@ export class RoomService {
     // get room
     const code: number = this.userService.getRoom(id);
     const room: Room = this.getRoom(code);
+    let running = false;
 
-    if (room.players.length > 1) {
+    if (room && room.players.length > 1) {
       room.running = true;
+      running = room.running;
 
       this.notifyRoom(
         code,
@@ -173,7 +175,7 @@ export class RoomService {
       });
     }
 
-    return room.running;
+    return running;
   }
 
   /**
