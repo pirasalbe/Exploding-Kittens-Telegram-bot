@@ -1133,6 +1133,7 @@ export class RoomService {
       removed = true;
       const card: Card = player.cards.splice(index, 1)[0];
       roomCard.otherCards.push(card);
+      console.log(roomCard);
     }
 
     return removed;
@@ -1271,6 +1272,7 @@ export class RoomService {
         feral++;
       }
     }
+    console.log(card, main, feral);
 
     // add cards to message
     message += main + ' ' + card.description;
