@@ -1133,11 +1133,15 @@ export class RoomService {
       removed = true;
       const card: Card = player.cards.splice(index, 1)[0];
 
+      console.log('Before', JSON.stringify(roomCard));
+
       if (roomCard.type === card.type) {
         roomCard.otherCards++;
       } else {
         roomCard.otherFeralCards++;
       }
+
+      console.log('After', JSON.stringify(roomCard));
     }
 
     return removed;
@@ -1262,14 +1266,15 @@ export class RoomService {
    * @param card Cat card used
    */
   private catCardUsedMessage(card: CatCard): string {
-    let message = 'played ';
     // add cards to message
-    message += card.otherCards + 1 + ' ' + card.description;
+    const main: number = card.otherCards + 1;
+    let message = 'played ' + main + ' ' + card.description;
     if (card.otherFeralCards > 0) {
       message +=
         ' and ' + card.otherFeralCards + ' ' + CardDescription.FERAL_CAT;
     }
     message += '.';
+    console.log(JSON.stringify(card));
 
     return message;
   }
