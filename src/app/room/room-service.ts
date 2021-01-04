@@ -1110,8 +1110,11 @@ export class RoomService {
 
     for (let i = 0; i < cardNumber; i++) {
       // remove other card
-      if (!this.removeCard(card, player, card.type)) {
-        this.removeCard(card, player, CardType.FERAL_CAT);
+      if (this.removeCard(player, card.type)) {
+        card.otherCards++;
+      } else {
+        this.removeCard(player, CardType.FERAL_CAT);
+        card.otherFeralCards++;
       }
     }
 
@@ -1129,15 +1132,10 @@ export class RoomService {
 
   /**
    * Remove a card if exists
-   * @param roomCard Room card
    * @param player Player's cards
    * @param cardType Type to remove
    */
-  private removeCard(
-    roomCard: CatCard,
-    player: Player,
-    cardType: string
-  ): boolean {
+  private removeCard(player: Player, cardType: string): boolean {
     let removed = false;
 
     const index: number = player.cards.findIndex(
@@ -1146,13 +1144,7 @@ export class RoomService {
 
     if (index !== -1) {
       removed = true;
-      const card: Card = player.cards.splice(index, 1)[0];
-
-      if (roomCard.type === card.type) {
-        roomCard.otherCards++;
-      } else {
-        roomCard.otherFeralCards++;
-      }
+      player.cards.splice(index, 1);
     }
 
     return removed;
@@ -1279,10 +1271,13 @@ export class RoomService {
   private catCardUsedMessage(card: CatCard): string {
     // add cards to message
     const main: number = card.otherCards + 1;
-    let message = 'played ' + main + ' ' + card.description;
+    let message = 'played ' + String(main) + ' ' + card.description;
     if (card.otherFeralCards > 0) {
       message +=
-        ' and ' + card.otherFeralCards + ' ' + CardDescription.FERAL_CAT;
+        ' and ' +
+        String(card.otherFeralCards) +
+        ' ' +
+        CardDescription.FERAL_CAT;
     }
     message += '.';
 
