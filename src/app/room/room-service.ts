@@ -774,8 +774,9 @@ export class RoomService {
         buttons.push([
           Markup.callbackButton(
             this.userService.getUsername(p.id) +
-              '. ' +
-              this.getPlayerCardsMessage(p),
+              ' (' +
+              this.getPlayerCardsMessage(p) +
+              ')',
             action + p.id
           ),
         ]);
