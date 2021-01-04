@@ -1265,14 +1265,16 @@ export class RoomService {
     let main = 1;
     // feral cat count
     let feral = 0;
+    console.log('Count');
     for (const c of card.otherCards) {
+      console.log(c);
       if (card.type === c.type) {
         main++;
       } else {
         feral++;
       }
     }
-    console.log(card, main, feral);
+    console.log('End', card, main, feral);
 
     // add cards to message
     message += main + ' ' + card.description;
