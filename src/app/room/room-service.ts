@@ -1103,6 +1103,7 @@ export class RoomService {
       return;
     }
     const card: CatCard = room.card;
+    card.resetCount();
 
     for (let i = 0; i < cardNumber; i++) {
       // remove other card

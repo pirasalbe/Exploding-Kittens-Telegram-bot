@@ -163,6 +163,14 @@ export abstract class CatCard extends OtherPlayerCard {
    * Action
    */
   action: 'steal' | 'request';
+
+  /**
+   * Reset card counters
+   */
+  resetCount(): void {
+    this.otherCards = 0;
+    this.otherFeralCards = 0;
+  }
 }
 
 export class TacocatCard extends CatCard {
