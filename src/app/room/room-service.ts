@@ -1133,15 +1133,11 @@ export class RoomService {
       removed = true;
       const card: Card = player.cards.splice(index, 1)[0];
 
-      console.log('Before', JSON.stringify(roomCard));
-
       if (roomCard.type === card.type) {
         roomCard.otherCards++;
       } else {
         roomCard.otherFeralCards++;
       }
-
-      console.log('After', JSON.stringify(roomCard));
     }
 
     return removed;
@@ -1274,7 +1270,6 @@ export class RoomService {
         ' and ' + card.otherFeralCards + ' ' + CardDescription.FERAL_CAT;
     }
     message += '.';
-    console.log(JSON.stringify(card));
 
     return message;
   }
