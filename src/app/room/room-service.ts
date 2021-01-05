@@ -150,15 +150,6 @@ export class RoomService {
       room.running = true;
       running = room.running;
 
-      this.notifyRoom(
-        code,
-        'Game started. [' +
-          room.players.length +
-          '/' +
-          room.mode.maxPlayers +
-          '] players.'
-      );
-
       // prepare deck
       room.deck = GameUtils.shuffle(room.mode.getCards(room.players.length));
 
@@ -177,10 +168,19 @@ export class RoomService {
         room.deck.concat(room.mode.getMissingCards(room.players.length))
       );
 
-      // send card
-      this.sendCards(code).then(() => {
-        // start turn
-        this.sendNextPlayer(room);
+      this.notifyRoom(
+        code,
+        'Game started. [' +
+          room.players.length +
+          '/' +
+          room.mode.maxPlayers +
+          '] players.'
+      ).then(() => {
+        // send card
+        this.sendCards(code).then(() => {
+          // start turn
+          this.sendNextPlayer(room);
+        });
       });
     }
 
