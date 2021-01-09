@@ -1392,8 +1392,9 @@ export class RoomService {
 
     // end game and destroy room
     if (end) {
-      this.notifyRoom(code, 'won the game 👑👑🐈', winner);
-      this.stopGame(winner);
+      this.notifyRoom(code, 'won the game 👑👑🐈', winner).then(() => {
+        this.stopGame(winner);
+      });
     }
 
     return end;
