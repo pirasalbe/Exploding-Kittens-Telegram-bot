@@ -1447,9 +1447,9 @@ export class RoomService {
   private sendNextPlayer(room: Room): void {
     // @name turn. Player has n cards. m turns left. k cards left in the deck
     const player: Player = room.players[room.currentPlayer];
-    let message = 'turn.\n';
-    message += 'Player has ' + this.getPlayerCardsMessage(player) + '.\n';
+    let message = 'turn. ';
     message += room.turns + ' turn' + (room.turns > 1 ? 's' : '') + ' left.\n';
+    message += 'Player has ' + this.getPlayerCardsMessage(player) + '.\n';
     const deck: number = room.deck.length;
     message += deck + ' card' + (deck > 1 ? 's' : '') + ' left in the deck.';
 
