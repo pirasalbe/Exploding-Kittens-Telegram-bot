@@ -1451,7 +1451,15 @@ export class RoomService {
     message += room.turns + ' turn' + (room.turns > 1 ? 's' : '') + ' left.\n';
     message += 'Player has ' + this.getPlayerCardsMessage(player) + '.\n';
     const deck: number = room.deck.length;
-    message += deck + ' card' + (deck > 1 ? 's' : '') + ' left in the deck.';
+    message += deck + ' card' + (deck > 1 ? 's' : '') + ' left in the deck.\n';
+    // players alive
+    let alive = 0;
+    for (const p of room.players) {
+      if (p.alive) {
+        alive++;
+      }
+    }
+    message += alive + ' player' + (alive > 1 ? 's' : '') + ' still alive.';
 
     this.notifyRoom(room.id, message, player.id).then(() => {
       // send cards button
